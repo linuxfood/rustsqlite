@@ -292,8 +292,6 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
         ret ok(sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }));
       }
       ret err(r);
-      //#debug("created new stmt: %s", new_stmt);
-      //ret (sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }), r);
     }
 
     fn exec(sql: str) -> int {
