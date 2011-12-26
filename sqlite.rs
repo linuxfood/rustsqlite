@@ -53,6 +53,8 @@ type sqlite_stmt = obj {
   fn get_column_name(i: int) -> str;
   fn get_column_names() -> [str];
 
+  fn get_bind_index(name: str) -> int;
+
   fn bind_param(i: int, value: sqlite_bind_arg) -> int;
   fn bind_params(values: [sqlite_bind_arg]) -> int;
 };
@@ -107,6 +109,7 @@ native mod _sqlite {
   fn sqlite3_bind_null(sth: *_stmt, icol: int) -> int;
   fn sqlite3_bind_int(sth: *_stmt, icol: int, v: int) -> int;
   fn sqlite3_bind_double(sth: *_stmt, icol: int, value: float) -> int;
+  fn sqlite3_bind_parameter_index(sth: *_stmt, name: str::sbuf) -> int;
 
   fn sqlite3_busy_timeout(dbh: *_dbh, ms: int) -> int;
 
@@ -179,6 +182,13 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
     fn get_text(i: int) -> str unsafe {
       let stmt = st._stmt;
       ret str::str_from_cstr( _sqlite::sqlite3_column_text(stmt, i) );
+    }
+
+    fn get_bind_index(name: str) -> int {
+      let stmt = st._stmt;
+      ret str::as_buf(name, { |_name|
+        _sqlite::sqlite3_bind_parameter_index(stmt, _name)
+      });
     }
 
     fn get_column_count() -> int {
@@ -380,5 +390,21 @@ mod tests {
     assert res == SQLITE_OK;
     assert sth.step() == SQLITE_ROW;
     assert sth.get_column_names() == ["id", "v"];
+  }
+
+  fn bind_param_index() {
+    let (dbh, res) = sqlite_open(":memory:");
+    assert res == SQLITE_OK;
+
+    dbh.exec(
+      "BEGIN;
+      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+      COMMIT;
+      "
+    ) == SQLITE_OK;
+    let (sth, res) = dbh.prepare("SELECT * FROM test WHERE v=:Name", none);
+    assert res == SQLITE_OK;
+    assert sth.get_bind_index(":Name") == 1;
   }
 }
