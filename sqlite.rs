@@ -81,7 +81,7 @@ type sqlite_stmt = obj {
 type sqlite_dbh = obj {
   fn get_errmsg() -> str;
   fn prepare(sql: str, &_tail: option::t<str>) -> sqlite_result<sqlite_stmt>;
-  fn exec(sql: str) -> int;
+  fn exec(sql: str) -> sqlite_result<int>;
   fn get_changes() -> int;
   fn get_last_insert_rowid() -> i64;
 
@@ -351,12 +351,15 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       ret err(r);
     }
 
-    fn exec(sql: str) -> int {
+    fn exec(sql: str) -> sqlite_result<int> {
       let dbh = st._dbh;
       let r : int = str::as_buf(sql, { |_sql|
         _sqlite::sqlite3_exec(dbh, _sql, ptr::null(), ptr::null(), ptr::null())
       });
-      ret r;
+      if r == SQLITE_OK {
+        ret ok(r);
+      }
+      ret err(r);
     }
 
     fn set_busy_timeout(ms: int) -> int {
@@ -392,6 +395,11 @@ mod tests {
     ret result::get(dbh);
   }
 
+  fn checked_exec(dbh: sqlite_dbh, sql: str) {
+    let r = dbh.exec(sql);
+    check success(r);
+  }
+
   #[test]
   fn open_db() {
     checked_open();
@@ -400,29 +408,24 @@ mod tests {
   #[test]
   fn exec_create_tbl() {
     let dbh = checked_open();
-
-    let res = dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
-    assert res == SQLITE_OK;
+    checked_exec(dbh, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
   }
 
   #[test]
   fn prepare_insert_stmt() {
     let dbh = checked_open();
 
-    dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
-
-    assert dbh.exec("BEGIN;") == SQLITE_OK;
+    checked_exec(dbh, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     let sth = checked_prepare(dbh, "INSERT OR IGNORE INTO test (id) VALUES (1)");
     let res = sth.step();
     #error("prepare_insert_stmt step res: %d", res);
-    assert dbh.exec("COMMIT;") == SQLITE_OK;
   }
 
   #[test]
   fn prepare_select_stmt() {
     let dbh = checked_open();
 
-    dbh.exec(
+    checked_exec(dbh,
       "BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT);
       INSERT OR IGNORE INTO test (id) VALUES (1);
@@ -439,13 +442,13 @@ mod tests {
   fn prepared_stmt_bind() {
     let dbh = checked_open();
 
-    dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(dbh, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
-    assert dbh.exec(
+    checked_exec(dbh,
       "INSERT OR IGNORE INTO test (id) VALUES(2);"
     + "INSERT OR IGNORE INTO test (id) VALUES(3);"
     + "INSERT OR IGNORE INTO test (id) VALUES(4);"
-    ) == SQLITE_OK;
+    );
     let sth = checked_prepare(dbh, "SELECT id FROM test WHERE id > ? AND id < ?");
     assert sth.bind_param(1, integer(2)) == SQLITE_OK;
     assert sth.bind_param(2, integer(4)) == SQLITE_OK;
@@ -458,13 +461,13 @@ mod tests {
   fn column_names() {
     let dbh = checked_open();
 
-    dbh.exec(
+    checked_exec(dbh,
       "BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
       INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
       COMMIT;
       "
-    ) == SQLITE_OK;
+    );
     let sth = checked_prepare(dbh, "SELECT * FROM test");
     assert sth.step() == SQLITE_ROW;
     assert sth.get_column_names() == ["id", "v"];
@@ -474,13 +477,13 @@ mod tests {
   fn failed_prepare() {
     let dbh = checked_open();
 
-    dbh.exec(
+    checked_exec(dbh,
       "BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
       INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
       COMMIT;
       "
-    ) == SQLITE_OK;
+    );
     let _sth = checked_prepare(dbh, "SELECT q FRO test");
   }
 
@@ -488,13 +491,13 @@ mod tests {
   fn bind_param_index() {
     let dbh = checked_open();
 
-    dbh.exec(
+    checked_exec(dbh,
       "BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
       INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
       COMMIT;
       "
-    ) == SQLITE_OK;
+    );
     let sth = checked_prepare(dbh, "SELECT * FROM test WHERE v=:Name");
     assert sth.get_bind_index(":Name") == 1;
   }
@@ -502,7 +505,7 @@ mod tests {
   #[test]
   fn last_insert_id() {
     let dbh = checked_open();
-    dbh.exec(
+    checked_exec(dbh,
       "
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (v TEXT);
@@ -517,7 +520,7 @@ mod tests {
   #[test]
   fn step_row_basics() {
     let dbh = checked_open();
-    assert dbh.exec(
+    checked_exec(dbh,
       "
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER, k TEXT, v REAL);
@@ -526,7 +529,7 @@ mod tests {
       INSERT OR IGNORE INTO test (id, k, v) VALUES(3, 'o', 1.618);
       COMMIT;
       "
-    ) == SQLITE_OK;
+    );
     let sth = checked_prepare(dbh, "SELECT * FROM test WHERE id=2");
     let r = sth.step_row();
     check success(r);
