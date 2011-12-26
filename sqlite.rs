@@ -67,6 +67,8 @@ type sqlite_dbh = obj {
   fn get_errmsg() -> str;
   fn prepare(sql: str, &_tail: option::t<str>) -> sqlite_result<sqlite_stmt>;
   fn exec(sql: str) -> int;
+  fn get_changes() -> int;
+  fn get_last_insert_rowid() -> i64;
 
   fn set_busy_timeout(ms: int) -> int;
 };
@@ -82,6 +84,8 @@ native mod _sqlite {
   fn sqlite3_open(path: str::sbuf, hnd: **_dbh) -> int;
   fn sqlite3_close(dbh: *_dbh) -> int;
   fn sqlite3_errmsg(dbh: *_dbh) -> str::sbuf;
+  fn sqlite3_changes(dbh: *_dbh) -> int;
+  fn sqlite3_last_insert_rowid(dbh: *_dbh) -> i64;
 
   fn sqlite3_prepare_v2(
     hnd: *_dbh,
@@ -268,7 +272,17 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       ret str::str_from_cstr(_sqlite::sqlite3_errmsg(st._dbh));
     }
 
-    fn prepare(sql: str, &_tail: option::t<str>) -> result::t<sqlite_stmt,int> {
+    fn get_changes() -> int {
+      let dbh = st._dbh;
+      ret _sqlite::sqlite3_changes(dbh);
+    }
+
+    fn get_last_insert_rowid() -> i64 {
+      let dbh = st._dbh;
+      ret _sqlite::sqlite3_last_insert_rowid(dbh);
+    }
+
+    fn prepare(sql: str, &_tail: option::t<str>) -> sqlite_result<sqlite_stmt> {
       let new_stmt : *_sqlite::_stmt = ptr::null();
       let dbh = st._dbh;
       let r : int = str::as_buf(sql, { |_sql|
@@ -415,6 +429,7 @@ mod tests {
     let _sth = checked_prepare(dbh, "SELECT q FRO test");
   }
 
+  #[test]
   fn bind_param_index() {
     let dbh = checked_open();
 
@@ -427,5 +442,20 @@ mod tests {
     ) == SQLITE_OK;
     let sth = checked_prepare(dbh, "SELECT * FROM test WHERE v=:Name");
     assert sth.get_bind_index(":Name") == 1;
+  }
+
+  #[test]
+  fn last_insert_id() {
+    let dbh = checked_open();
+    dbh.exec(
+      "
+      BEGIN;
+      CREATE TABLE IF NOT EXISTS test (v TEXT);
+      INSERT OR IGNORE INTO test (v) VALUES ('This is a really long string.');
+      COMMIT;
+      "
+    );
+    #error("last insert_id: %s", u64::str(dbh.get_last_insert_rowid() as u64));
+    assert dbh.get_last_insert_rowid() == 1_i64;
   }
 }
