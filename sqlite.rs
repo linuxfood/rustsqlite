@@ -1,4 +1,5 @@
 use std;
+import std::map;
 import result::{ok, err, success};
 
 const SQLITE_OK         : int =  0;
@@ -39,10 +40,23 @@ tag sqlite_bind_arg {
   null();
 }
 
+tag sqlite_column_type {
+  sqlite_integer;
+  sqlite_float;
+  sqlite_text;
+  sqlite_blob;
+  sqlite_null;
+}
+
 type sqlite_result<T> = result::t<T, int>;
+tag sqlite_row_result {
+  row(map::hashmap<str, sqlite_bind_arg>);
+  done();
+}
 
 type sqlite_stmt = obj {
   fn step() -> int;
+  fn step_row() -> sqlite_result<sqlite_row_result>;
   fn reset() -> int;
   fn clear_bindings() -> int;
 
@@ -54,6 +68,7 @@ type sqlite_stmt = obj {
 
   fn get_column_count() -> int;
   fn get_column_name(i: int) -> str;
+  fn get_column_type(i: int) -> sqlite_column_type;
   fn get_column_names() -> [str];
 
   fn get_bind_index(name: str) -> int;
@@ -103,6 +118,7 @@ native mod _sqlite {
   fn sqlite3_clear_bindings(sth: *_stmt) -> int;
 
   fn sqlite3_column_name(sth: *_stmt, icol: int) -> str::sbuf;
+  fn sqlite3_column_type(sth: *_stmt, icol: int) -> int;
   fn sqlite3_data_count(sth: *_stmt) -> int;
   fn sqlite3_column_bytes(sth: *_stmt, icol: int) -> int;
   fn sqlite3_column_blob(sth: *_stmt, icol: int) -> str::sbuf;
@@ -159,6 +175,32 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       ret _sqlite::sqlite3_step(stmt);
     }
 
+    fn step_row() -> sqlite_result<sqlite_row_result> {
+      let is_row = self.step();
+      if is_row == SQLITE_ROW {
+        let column_cnt = self.get_column_count();
+        let i = 0;
+        let sqlrow = map::new_str_hash::<sqlite_bind_arg>();
+        while( i < column_cnt ) {
+          let name = self.get_column_name(i);
+          alt self.get_column_type(i) {
+            sqlite_integer. { sqlrow.insert(name, integer(self.get_int(i))); }
+            sqlite_float.   { sqlrow.insert(name, number(self.get_num(i))); }
+            sqlite_text.    { sqlrow.insert(name, text(self.get_text(i))); }
+            sqlite_blob.    { sqlrow.insert(name, blob(self.get_blob(i))); }
+            sqlite_null.    { sqlrow.insert(name, null); }
+          }
+          i += 1;
+        }
+
+        ret ok(row(sqlrow));
+      }
+      else if is_row == SQLITE_DONE {
+        ret ok(done);
+      }
+      ret err(is_row);
+    }
+
     fn get_bytes(i: int) -> int {
       let stmt = st._stmt;
       ret _sqlite::sqlite3_column_bytes(stmt, i);
@@ -205,6 +247,21 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
     fn get_column_name(i: int) -> str unsafe {
       let stmt = st._stmt;
       ret str::str_from_cstr( _sqlite::sqlite3_column_name(stmt, i) );
+    }
+
+    fn get_column_type(i: int) -> sqlite_column_type {
+      let stmt = st._stmt;
+      let ct = _sqlite::sqlite3_column_type(stmt, i);
+      let res = sqlite_null;
+      alt ct {
+        1 /* SQLITE_INTEGER */ { res = sqlite_integer; }
+        2 /* SQLITE_FLOAT   */ { res = sqlite_float; }
+        3 /* SQLITE_TEXT    */ { res = sqlite_text; }
+        4 /* SQLITE_BLOB    */ { res = sqlite_blob; }
+        5 /* SQLITE_NULL    */ { res = sqlite_null; }
+        _ { fail #fmt("sqlite internal error: Got an unknown column type (%d) back from the library.", ct); }
+      }
+      ret res;
     }
 
     fn get_column_names() -> [str] {
@@ -455,5 +512,33 @@ mod tests {
     );
     #error("last insert_id: %s", u64::str(dbh.get_last_insert_rowid() as u64));
     assert dbh.get_last_insert_rowid() == 1_i64;
+  }
+
+  #[test]
+  fn step_row_basics() {
+    let dbh = checked_open();
+    assert dbh.exec(
+      "
+      BEGIN;
+      CREATE TABLE IF NOT EXISTS test (id INTEGER, k TEXT, v REAL);
+      INSERT OR IGNORE INTO test (id, k, v) VALUES(1, 'pi', 3.1415);
+      INSERT OR IGNORE INTO test (id, k, v) VALUES(2, 'e', 2.17);
+      INSERT OR IGNORE INTO test (id, k, v) VALUES(3, 'o', 1.618);
+      COMMIT;
+      "
+    ) == SQLITE_OK;
+    let sth = checked_prepare(dbh, "SELECT * FROM test WHERE id=2");
+    let r = sth.step_row();
+    check success(r);
+    alt r {
+      ok(row(x)) {
+        assert x.get("id") == integer(2);
+        assert x.get("k")  == text("e");
+        assert x.get("v")  == number(2.17);
+      }
+      ok(done) {
+        fail("didnt get even one row back.");
+      }
+    }
   }
 }
