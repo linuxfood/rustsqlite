@@ -1,4 +1,5 @@
 use std;
+import result::{ok, err, success};
 
 const SQLITE_OK         : int =  0;
 const SQLITE_ERROR      : int =  1;
@@ -38,6 +39,8 @@ tag sqlite_bind_arg {
   null();
 }
 
+type sqlite_result<T> = result::t<T, int>;
+
 type sqlite_stmt = obj {
   fn step() -> int;
   fn reset() -> int;
@@ -62,7 +65,7 @@ type sqlite_stmt = obj {
 
 type sqlite_dbh = obj {
   fn get_errmsg() -> str;
-  fn prepare(sql: str, &_tail: option::t<str>) -> (sqlite_stmt, int);
+  fn prepare(sql: str, &_tail: option::t<str>) -> sqlite_result<sqlite_stmt>;
   fn exec(sql: str) -> int;
 
   fn set_busy_timeout(ms: int) -> int;
@@ -125,8 +128,7 @@ resource _sqlite_stmt(stmt: *_sqlite::_stmt) {
   _sqlite::sqlite3_finalize(stmt);
 }
 
-
-fn sqlite_open(path: str) -> (sqlite_dbh, int) {
+fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
   type sqliteState = {
     _dbh: *_sqlite::_dbh,
     _res: _sqlite_dbh
@@ -266,14 +268,18 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
       ret str::str_from_cstr(_sqlite::sqlite3_errmsg(st._dbh));
     }
 
-    fn prepare(sql: str, &_tail: option::t<str>) -> (sqlite_stmt, int) {
+    fn prepare(sql: str, &_tail: option::t<str>) -> result::t<sqlite_stmt,int> {
       let new_stmt : *_sqlite::_stmt = ptr::null();
       let dbh = st._dbh;
       let r : int = str::as_buf(sql, { |_sql|
         _sqlite::sqlite3_prepare_v2( dbh, _sql, str::byte_len(sql) as int, ptr::addr_of(new_stmt), ptr::null())
       });
+      if r == SQLITE_OK {
+        ret ok(sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }));
+      }
+      ret err(r);
       //#debug("created new stmt: %s", new_stmt);
-      ret (sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }), r);
+      //ret (sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }), r);
     }
 
     fn exec(sql: str) -> int {
@@ -294,50 +300,58 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
   let r : int = str::as_buf(path, { |_path|
     _sqlite::sqlite3_open(_path, ptr::addr_of(new_dbh))
   });
+  if r != SQLITE_OK {
+    ret err(r);
+  }
   //#debug("created new dbh: %s", new_dbh);
-  ret (sqlite_dbh({ _dbh: new_dbh, _res: _sqlite_dbh(new_dbh) }), r);
+  ret ok(sqlite_dbh({ _dbh: new_dbh, _res: _sqlite_dbh(new_dbh) }));
 }
 
 #[cfg(test)]
 mod tests {
 
+  fn checked_prepare(dbh: sqlite_dbh, sql: str) -> sqlite_stmt {
+    alt dbh.prepare(sql, none) {
+      ok(s) { ret s; }
+      err(x) { fail #fmt("sqlite error: \"%s\" (%d)", dbh.get_errmsg(), x); }
+    }
+  }
+
+  fn checked_open() -> sqlite_dbh {
+    let dbh = sqlite_open(":memory:");
+    check success(dbh);
+    ret result::get(dbh);
+  }
+
   #[test]
   fn open_db() {
-    let (_dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    checked_open();
   }
 
   #[test]
   fn exec_create_tbl() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    let dbh = checked_open();
 
-    res = dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    let res = dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     assert res == SQLITE_OK;
   }
 
   #[test]
   fn prepare_insert_stmt() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    let dbh = checked_open();
 
     dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
     assert dbh.exec("BEGIN;") == SQLITE_OK;
-    let (sth, res) = dbh.prepare("INSERT OR IGNORE INTO test (id) VALUES (1)", none);
-    #error("prepare_insert_stmt res: %d", res);
-    assert res == SQLITE_OK;
-    res = sth.step();
+    let sth = checked_prepare(dbh, "INSERT OR IGNORE INTO test (id) VALUES (1)");
+    let res = sth.step();
     #error("prepare_insert_stmt step res: %d", res);
-    assert res == SQLITE_DONE;
-
     assert dbh.exec("COMMIT;") == SQLITE_OK;
   }
 
   #[test]
   fn prepare_select_stmt() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    let dbh = checked_open();
 
     dbh.exec(
       "BEGIN;
@@ -346,8 +360,7 @@ mod tests {
       COMMIT;"
     );
 
-    let (sth, res) = dbh.prepare("SELECT id FROM test WHERE id = 1;", none);
-    assert res == SQLITE_OK;
+    let sth = checked_prepare(dbh, "SELECT id FROM test WHERE id = 1;");
     assert sth.step() == SQLITE_ROW;
     assert sth.get_int(0) == 1;
     assert sth.step() == SQLITE_DONE;
@@ -355,8 +368,7 @@ mod tests {
 
   #[test]
   fn prepared_stmt_bind() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    let dbh = checked_open();
 
     dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
@@ -365,8 +377,7 @@ mod tests {
     + "INSERT OR IGNORE INTO test (id) VALUES(3);"
     + "INSERT OR IGNORE INTO test (id) VALUES(4);"
     ) == SQLITE_OK;
-    let (sth, res) = dbh.prepare("SELECT id FROM test WHERE id > ? AND id < ?", none);
-    assert res == SQLITE_OK;
+    let sth = checked_prepare(dbh, "SELECT id FROM test WHERE id > ? AND id < ?");
     assert sth.bind_param(1, integer(2)) == SQLITE_OK;
     assert sth.bind_param(2, integer(4)) == SQLITE_OK;
 
@@ -376,8 +387,7 @@ mod tests {
 
   #[test]
   fn column_names() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+    let dbh = checked_open();
 
     dbh.exec(
       "BEGIN;
@@ -386,15 +396,14 @@ mod tests {
       COMMIT;
       "
     ) == SQLITE_OK;
-    let (sth, res) = dbh.prepare("SELECT * FROM test", none);
-    assert res == SQLITE_OK;
+    let sth = checked_prepare(dbh, "SELECT * FROM test");
     assert sth.step() == SQLITE_ROW;
     assert sth.get_column_names() == ["id", "v"];
   }
 
-  fn bind_param_index() {
-    let (dbh, res) = sqlite_open(":memory:");
-    assert res == SQLITE_OK;
+  #[test] #[should_fail]
+  fn failed_prepare() {
+    let dbh = checked_open();
 
     dbh.exec(
       "BEGIN;
@@ -403,8 +412,20 @@ mod tests {
       COMMIT;
       "
     ) == SQLITE_OK;
-    let (sth, res) = dbh.prepare("SELECT * FROM test WHERE v=:Name", none);
-    assert res == SQLITE_OK;
+    let _sth = checked_prepare(dbh, "SELECT q FRO test");
+  }
+
+  fn bind_param_index() {
+    let dbh = checked_open();
+
+    dbh.exec(
+      "BEGIN;
+      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+      COMMIT;
+      "
+    ) == SQLITE_OK;
+    let sth = checked_prepare(dbh, "SELECT * FROM test WHERE v=:Name");
     assert sth.get_bind_index(":Name") == 1;
   }
 }
