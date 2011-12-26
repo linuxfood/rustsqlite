@@ -41,12 +41,17 @@ tag sqlite_bind_arg {
 type sqlite_stmt = obj {
   fn step() -> int;
   fn reset() -> int;
+  fn clear_bindings() -> int;
 
   fn get_num(i: int) -> float;
   fn get_int(i: int) -> int;
   fn get_bytes(i: int) -> int;
   fn get_blob(i: int) -> [u8];
   fn get_text(i: int) -> str;
+
+  fn get_column_count() -> int;
+  fn get_column_name(i: int) -> str;
+  fn get_column_names() -> [str];
 
   fn bind_param(i: int, value: sqlite_bind_arg) -> int;
   fn bind_params(values: [sqlite_bind_arg]) -> int;
@@ -57,6 +62,8 @@ type sqlite_dbh = obj {
   fn get_errmsg() -> str;
   fn prepare(sql: str, &_tail: option::t<str>) -> (sqlite_stmt, int);
   fn exec(sql: str) -> int;
+
+  fn set_busy_timeout(ms: int) -> int;
 };
 
 
@@ -84,7 +91,10 @@ native mod _sqlite {
   fn sqlite3_step(sth: *_stmt) -> int;
   fn sqlite3_reset(sth: *_stmt) -> int;
   fn sqlite3_finalize(sth: *_stmt) -> int;
+  fn sqlite3_clear_bindings(sth: *_stmt) -> int;
 
+  fn sqlite3_column_name(sth: *_stmt, icol: int) -> str::sbuf;
+  fn sqlite3_data_count(sth: *_stmt) -> int;
   fn sqlite3_column_bytes(sth: *_stmt, icol: int) -> int;
   fn sqlite3_column_blob(sth: *_stmt, icol: int) -> str::sbuf;
 
@@ -97,6 +107,8 @@ native mod _sqlite {
   fn sqlite3_bind_null(sth: *_stmt, icol: int) -> int;
   fn sqlite3_bind_int(sth: *_stmt, icol: int, v: int) -> int;
   fn sqlite3_bind_double(sth: *_stmt, icol: int, value: float) -> int;
+
+  fn sqlite3_busy_timeout(dbh: *_dbh, ms: int) -> int;
 
 }
 
@@ -127,6 +139,12 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
       let stmt = st._stmt;
       ret _sqlite::sqlite3_reset(stmt);
     }
+
+    fn clear_bindings() -> int {
+      let stmt = st._stmt;
+      ret _sqlite::sqlite3_clear_bindings(stmt);
+    }
+
     fn step() -> int {
       let stmt = st._stmt;
       ret _sqlite::sqlite3_step(stmt);
@@ -161,6 +179,27 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
     fn get_text(i: int) -> str unsafe {
       let stmt = st._stmt;
       ret str::str_from_cstr( _sqlite::sqlite3_column_text(stmt, i) );
+    }
+
+    fn get_column_count() -> int {
+      let stmt = st._stmt;
+      ret _sqlite::sqlite3_data_count(stmt);
+    }
+
+    fn get_column_name(i: int) -> str unsafe {
+      let stmt = st._stmt;
+      ret str::str_from_cstr( _sqlite::sqlite3_column_name(stmt, i) );
+    }
+
+    fn get_column_names() -> [str] {
+      let cnt  = self.get_column_count();
+      let i    = 0;
+      let r    = [];
+      while(i < cnt){
+        vec::push(r, self.get_column_name(i));
+        i += 1;
+      }
+      ret r;
     }
 
     fn bind_params(values: [sqlite_bind_arg]) -> int {
@@ -234,6 +273,11 @@ fn sqlite_open(path: str) -> (sqlite_dbh, int) {
       });
       ret r;
     }
+
+    fn set_busy_timeout(ms: int) -> int {
+      let dbh = st._dbh;
+      ret _sqlite::sqlite3_busy_timeout(dbh, ms);
+    }
   };
 
   let new_dbh : *_sqlite::_dbh = ptr::null();
@@ -249,13 +293,13 @@ mod tests {
 
   #[test]
   fn open_db() {
-    let (_dbh, res) = sqlite_open("test.sqlite3");
+    let (_dbh, res) = sqlite_open(":memory:");
     assert res == SQLITE_OK;
   }
 
   #[test]
   fn exec_create_tbl() {
-    let (dbh, res) = sqlite_open("test.sqlite3");
+    let (dbh, res) = sqlite_open(":memory:");
     assert res == SQLITE_OK;
 
     res = dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
@@ -264,23 +308,34 @@ mod tests {
 
   #[test]
   fn prepare_insert_stmt() {
-    let (dbh, res) = sqlite_open("test.sqlite3");
+    let (dbh, res) = sqlite_open(":memory:");
+    assert res == SQLITE_OK;
+
+    dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
     assert dbh.exec("BEGIN;") == SQLITE_OK;
-    assert res == SQLITE_OK;
     let (sth, res) = dbh.prepare("INSERT OR IGNORE INTO test (id) VALUES (1)", none);
     #error("prepare_insert_stmt res: %d", res);
     assert res == SQLITE_OK;
     res = sth.step();
     #error("prepare_insert_stmt step res: %d", res);
     assert res == SQLITE_DONE;
+
+    assert dbh.exec("COMMIT;") == SQLITE_OK;
   }
 
   #[test]
   fn prepare_select_stmt() {
-    let (dbh, res) = sqlite_open("test.sqlite3");
-
+    let (dbh, res) = sqlite_open(":memory:");
     assert res == SQLITE_OK;
+
+    dbh.exec(
+      "BEGIN;
+      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT);
+      INSERT OR IGNORE INTO test (id) VALUES (1);
+      COMMIT;"
+    );
+
     let (sth, res) = dbh.prepare("SELECT id FROM test WHERE id = 1;", none);
     assert res == SQLITE_OK;
     assert sth.step() == SQLITE_ROW;
@@ -290,9 +345,11 @@ mod tests {
 
   #[test]
   fn prepared_stmt_bind() {
-    let (dbh, res) = sqlite_open("test.sqlite3");
-
+    let (dbh, res) = sqlite_open(":memory:");
     assert res == SQLITE_OK;
+
+    dbh.exec("BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+
     assert dbh.exec(
       "INSERT OR IGNORE INTO test (id) VALUES(2);"
     + "INSERT OR IGNORE INTO test (id) VALUES(3);"
@@ -305,5 +362,23 @@ mod tests {
 
     assert sth.step() == SQLITE_ROW;
     assert sth.get_num(0) as int == 3;
+  }
+
+  #[test]
+  fn column_names() {
+    let (dbh, res) = sqlite_open(":memory:");
+    assert res == SQLITE_OK;
+
+    dbh.exec(
+      "BEGIN;
+      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+      COMMIT;
+      "
+    ) == SQLITE_OK;
+    let (sth, res) = dbh.prepare("SELECT * FROM test", none);
+    assert res == SQLITE_OK;
+    assert sth.step() == SQLITE_ROW;
+    assert sth.get_column_names() == ["id", "v"];
   }
 }
