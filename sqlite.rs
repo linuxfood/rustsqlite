@@ -170,12 +170,12 @@ native mod _sqlite {
 }
 
 resource _sqlite_dbh(dbh: *_sqlite::_dbh) {
-  //#debug("freeing dbh resource %s", dbh);
+  log(debug, ("freeing dbh resource: ", dbh));
   _sqlite::sqlite3_close(dbh);
 }
 
 resource _sqlite_stmt(stmt: *_sqlite::_stmt) {
-  //#debug("freeing stmt resource %s", stmt);
+  log(debug, ("freeing stmt resource: ", stmt));
   _sqlite::sqlite3_finalize(stmt);
 }
 
@@ -576,3 +576,4 @@ mod tests {
     }
   }
 }
+
