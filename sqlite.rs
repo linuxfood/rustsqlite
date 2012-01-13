@@ -377,6 +377,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
         _sqlite::sqlite3_prepare_v2( dbh, _sql, str::byte_len(sql) as int, ptr::addr_of(new_stmt), ptr::null())
       });
       if r == SQLITE_OK {
+        log(debug, ("created new stmt:", new_stmt));
         ret ok(sqlite_stmt({ _stmt: new_stmt, _res: _sqlite_stmt(new_stmt) }));
       }
       ret err(r);
@@ -406,7 +407,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
   if r != SQLITE_OK {
     ret err(r);
   }
-  //#debug("created new dbh: %s", new_dbh);
+  log(debug, ("created new dbh:", new_dbh));
   ret ok(sqlite_dbh({ _dbh: new_dbh, _res: _sqlite_dbh(new_dbh) }));
 }
 
