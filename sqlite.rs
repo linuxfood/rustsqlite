@@ -140,6 +140,7 @@ native mod _sqlite {
   fn sqlite3_errmsg(dbh: *_dbh) -> str::sbuf;
   fn sqlite3_changes(dbh: *_dbh) -> c_int;
   fn sqlite3_last_insert_rowid(dbh: *_dbh) -> i64;
+  fn sqlite3_complete(sql: str::sbuf) -> c_int;
 
   fn sqlite3_prepare_v2(
     hnd: *_dbh,
@@ -185,6 +186,21 @@ resource _sqlite_dbh(dbh: *_sqlite::_dbh) {
 resource _sqlite_stmt(stmt: *_sqlite::_stmt) {
   log(debug, ("freeing stmt resource: ", stmt));
   _sqlite::sqlite3_finalize(stmt);
+}
+
+fn sqlite_complete(sql: str) -> sqlite_result<bool> {
+  let r = str::as_buf(sql, { |_sql|
+    _sqlite::sqlite3_complete(_sql)
+  }) as int;
+  if r == SQLITE_NOMEM as int {
+    ret err(SQLITE_NOMEM);
+  }
+  else if r == 1 {
+    ret ok(true);
+  }
+  else {
+    ret ok(false);
+  }
 }
 
 fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
@@ -584,6 +600,25 @@ mod tests {
       }
       ok(done) {
         fail("didnt get even one row back.");
+      }
+    }
+  }
+
+  #[test]
+  fn check_complete_sql() {
+    let r1 = sqlite_complete("SELECT * FROM");
+    let r2 = sqlite_complete("SELECT * FROM bob;");
+    check is_ok_and(r1, false);
+    check is_ok_and(r2, true);
+
+    pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
+      check success(r);
+      ret result_get(r) == v;
+    }
+
+    pure fn result_get<T: copy, U>(res: result::t<T, U>) : success(res) -> T {
+      alt res {
+        ok(t) { t }
       }
     }
   }
