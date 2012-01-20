@@ -138,13 +138,13 @@ native mod _sqlite {
   fn sqlite3_open(path: str::sbuf, hnd: **_dbh) -> sqlite_result_code;
   fn sqlite3_close(dbh: *_dbh) -> sqlite_result_code;
   fn sqlite3_errmsg(dbh: *_dbh) -> str::sbuf;
-  fn sqlite3_changes(dbh: *_dbh) -> int;
+  fn sqlite3_changes(dbh: *_dbh) -> c_int;
   fn sqlite3_last_insert_rowid(dbh: *_dbh) -> i64;
 
   fn sqlite3_prepare_v2(
     hnd: *_dbh,
     sql: str::sbuf,
-    sql_len: int,
+    sql_len: c_int,
     shnd: **_stmt,
     tail: *str::sbuf
   ) -> sqlite_result_code;
@@ -156,24 +156,24 @@ native mod _sqlite {
   fn sqlite3_finalize(sth: *_stmt) -> sqlite_result_code;
   fn sqlite3_clear_bindings(sth: *_stmt) -> sqlite_result_code;
 
-  fn sqlite3_column_name(sth: *_stmt, icol: int) -> str::sbuf;
-  fn sqlite3_column_type(sth: *_stmt, icol: int) -> int;
-  fn sqlite3_data_count(sth: *_stmt) -> int;
-  fn sqlite3_column_bytes(sth: *_stmt, icol: int) -> int;
-  fn sqlite3_column_blob(sth: *_stmt, icol: int) -> str::sbuf;
+  fn sqlite3_column_name(sth: *_stmt, icol: c_int) -> str::sbuf;
+  fn sqlite3_column_type(sth: *_stmt, icol: c_int) -> c_int;
+  fn sqlite3_data_count(sth: *_stmt) -> c_int;
+  fn sqlite3_column_bytes(sth: *_stmt, icol: c_int) -> c_int;
+  fn sqlite3_column_blob(sth: *_stmt, icol: c_int) -> str::sbuf;
 
-  fn sqlite3_column_text(sth: *_stmt, icol: int) -> str::sbuf;
-  fn sqlite3_column_double(sth: *_stmt, icol: int) -> float;
-  fn sqlite3_column_int(sth: *_stmt, icol: int) -> int;
+  fn sqlite3_column_text(sth: *_stmt, icol: c_int) -> str::sbuf;
+  fn sqlite3_column_double(sth: *_stmt, icol: c_int) -> float;
+  fn sqlite3_column_int(sth: *_stmt, icol: c_int) -> c_int;
 
-  fn sqlite3_bind_blob(sth: *_stmt, icol: int, buf: str::sbuf, buflen: int, d: int) -> sqlite_result_code;
-  fn sqlite3_bind_text(sth: *_stmt, icol: int, buf: str::sbuf, buflen: int, d: int) -> sqlite_result_code;
-  fn sqlite3_bind_null(sth: *_stmt, icol: int) -> sqlite_result_code;
-  fn sqlite3_bind_int(sth: *_stmt, icol: int, v: int) -> sqlite_result_code;
-  fn sqlite3_bind_double(sth: *_stmt, icol: int, value: float) -> sqlite_result_code;
-  fn sqlite3_bind_parameter_index(sth: *_stmt, name: str::sbuf) -> int;
+  fn sqlite3_bind_blob(sth: *_stmt, icol: c_int, buf: str::sbuf, buflen: c_int, d: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_text(sth: *_stmt, icol: c_int, buf: str::sbuf, buflen: c_int, d: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_null(sth: *_stmt, icol: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_int(sth: *_stmt, icol: c_int, v: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_double(sth: *_stmt, icol: c_int, value: float) -> sqlite_result_code;
+  fn sqlite3_bind_parameter_index(sth: *_stmt, name: str::sbuf) -> c_int;
 
-  fn sqlite3_busy_timeout(dbh: *_dbh, ms: int) -> sqlite_result_code;
+  fn sqlite3_busy_timeout(dbh: *_dbh, ms: c_int) -> sqlite_result_code;
 
 }
 
@@ -242,7 +242,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
     fn get_bytes(i: int) -> int {
       let stmt = self._stmt;
-      ret _sqlite::sqlite3_column_bytes(stmt, i);
+      ret _sqlite::sqlite3_column_bytes(stmt, i as c_int) as int;
     }
 
     fn get_blob(i: int) -> [u8] unsafe {
@@ -250,47 +250,47 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       let len  = self.get_bytes(i);
       let bytes : [u8] = [];
       bytes = vec::unsafe::from_buf(
-        _sqlite::sqlite3_column_blob(stmt, i),
+        _sqlite::sqlite3_column_blob(stmt, i as c_int),
         len as uint
       );
-      ret bytes
+      ret bytes;
     }
 
     fn get_int(i: int) -> int {
       let stmt = self._stmt;
-      ret _sqlite::sqlite3_column_int(stmt, i);
+      ret _sqlite::sqlite3_column_int(stmt, i as c_int) as int;
     }
 
     fn get_num(i: int) -> float {
       let stmt = self._stmt;
-      ret _sqlite::sqlite3_column_double(stmt, i);
+      ret _sqlite::sqlite3_column_double(stmt, i as c_int);
     }
 
     fn get_text(i: int) -> str unsafe {
       let stmt = self._stmt;
-      ret str::from_cstr( _sqlite::sqlite3_column_text(stmt, i) );
+      ret str::from_cstr( _sqlite::sqlite3_column_text(stmt, i as c_int) );
     }
 
     fn get_bind_index(name: str) -> int {
       let stmt = self._stmt;
       ret str::as_buf(name, { |_name|
-        _sqlite::sqlite3_bind_parameter_index(stmt, _name)
+        _sqlite::sqlite3_bind_parameter_index(stmt, _name) as int
       });
     }
 
     fn get_column_count() -> int {
       let stmt = self._stmt;
-      ret _sqlite::sqlite3_data_count(stmt);
+      ret _sqlite::sqlite3_data_count(stmt) as int;
     }
 
     fn get_column_name(i: int) -> str unsafe {
       let stmt = self._stmt;
-      ret str::from_cstr( _sqlite::sqlite3_column_name(stmt, i) );
+      ret str::from_cstr( _sqlite::sqlite3_column_name(stmt, i as c_int) );
     }
 
     fn get_column_type(i: int) -> sqlite_column_type {
       let stmt = self._stmt;
-      let ct = _sqlite::sqlite3_column_type(stmt, i);
+      let ct = _sqlite::sqlite3_column_type(stmt, i as c_int) as int;
       let res = sqlite_null;
       alt ct {
         1 /* SQLITE_INTEGER */ { res = sqlite_integer; }
@@ -336,7 +336,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
           r = str::as_buf(v, { |_v|
             // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
             //        of copying when binding text or blob values.
-            _sqlite::sqlite3_bind_text(stmt, i, _v, l as int, -1)
+            _sqlite::sqlite3_bind_text(stmt, i as c_int, _v, l as c_int, -1 as c_int)
           });
         }
 
@@ -344,19 +344,19 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
           let l = vec::len(v);
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
-          r = _sqlite::sqlite3_bind_blob(stmt, i, vec::unsafe::to_ptr(v), l as int, -1)
+          r = _sqlite::sqlite3_bind_blob(stmt, i as c_int, vec::unsafe::to_ptr(v), l as c_int, -1 as c_int)
         }
 
         integer(v) {
-          r = _sqlite::sqlite3_bind_int(stmt, i, v);
+          r = _sqlite::sqlite3_bind_int(stmt, i as c_int, v as c_int);
         }
 
         number(v) {
-          r = _sqlite::sqlite3_bind_double(stmt, i, v);
+          r = _sqlite::sqlite3_bind_double(stmt, i as c_int, v);
         }
 
         null {
-          r = _sqlite::sqlite3_bind_null(stmt, i);
+          r = _sqlite::sqlite3_bind_null(stmt, i as c_int);
         }
 
       }
@@ -372,7 +372,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
     fn get_changes() -> int {
       let dbh = self._dbh;
-      ret _sqlite::sqlite3_changes(dbh);
+      ret _sqlite::sqlite3_changes(dbh) as int;
     }
 
     fn get_last_insert_rowid() -> i64 {
@@ -384,7 +384,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       let new_stmt : *_sqlite::_stmt = ptr::null();
       let dbh = self._dbh;
       let r = str::as_buf(sql, { |_sql|
-        _sqlite::sqlite3_prepare_v2( dbh, _sql, str::byte_len(sql) as int, ptr::addr_of(new_stmt), ptr::null())
+        _sqlite::sqlite3_prepare_v2( dbh, _sql, str::byte_len(sql) as c_int, ptr::addr_of(new_stmt), ptr::null())
       });
       if r == SQLITE_OK {
         log(debug, ("created new stmt:", new_stmt));
@@ -407,7 +407,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
     fn set_busy_timeout(ms: int) -> sqlite_result_code {
       let dbh = self._dbh;
-      ret _sqlite::sqlite3_busy_timeout(dbh, ms);
+      ret _sqlite::sqlite3_busy_timeout(dbh, ms as c_int);
     }
   };
 
