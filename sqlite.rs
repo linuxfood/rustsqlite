@@ -127,12 +127,12 @@ iface sqlite_dbh {
   fn set_busy_timeout(ms: int) -> sqlite_result_code;
 }
 
+enum _dbh {}
+enum _stmt {}
+
+enum _notused {}
+
 native mod sqlite3 {
-  type _dbh;
-  type _stmt;
-
-  type _notused;
-
   fn sqlite3_open(path: str::sbuf, hnd: **_dbh) -> sqlite_result_code;
   fn sqlite3_close(dbh: *_dbh) -> sqlite_result_code;
   fn sqlite3_errmsg(dbh: *_dbh) -> str::sbuf;
@@ -176,12 +176,12 @@ native mod sqlite3 {
 
 }
 
-resource _sqlite_dbh(dbh: *sqlite3::_dbh) {
+resource _sqlite_dbh(dbh: *_dbh) {
   log(debug, ("freeing dbh resource: ", dbh));
   sqlite3::sqlite3_close(dbh);
 }
 
-resource _sqlite_stmt(stmt: *sqlite3::_stmt) {
+resource _sqlite_stmt(stmt: *_stmt) {
   log(debug, ("freeing stmt resource: ", stmt));
   sqlite3::sqlite3_finalize(stmt);
 }
@@ -203,12 +203,12 @@ fn sqlite_complete(sql: str) -> sqlite_result<bool> {
 
 fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
   type sqliteState = {
-    _dbh: *sqlite3::_dbh,
+    _dbh: *_dbh,
     _res: _sqlite_dbh
   };
 
   type sqliteStmtState = {
-    _stmt: *sqlite3::_stmt,
+    _stmt: *_stmt,
     _res: _sqlite_stmt
   };
 
@@ -395,7 +395,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
     }
 
     fn prepare(sql: str, &_tail: option::t<str>) -> sqlite_result<sqlite_stmt> {
-      let new_stmt : *sqlite3::_stmt = ptr::null();
+      let new_stmt : *_stmt = ptr::null();
       let dbh = self._dbh;
       let r = str::as_buf(sql, { |_sql|
         sqlite3::sqlite3_prepare_v2( dbh, _sql, str::byte_len(sql) as c_int, ptr::addr_of(new_stmt), ptr::null())
@@ -425,7 +425,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
     }
   };
 
-  let new_dbh : *sqlite3::_dbh = ptr::null();
+  let new_dbh : *_dbh = ptr::null();
   let r = str::as_buf(path, { |_path|
     sqlite3::sqlite3_open(_path, ptr::addr_of(new_dbh))
   });
@@ -589,14 +589,13 @@ mod tests {
     );
     let sth = checked_prepare(dbh, "SELECT * FROM test WHERE id=2");
     let r = sth.step_row();
-    check success(r);
-    alt r {
-      ok(row(x)) {
+    alt result::get(r) {
+      row(x) {
         assert x.get("id") == integer(2);
         assert x.get("k")  == text("e");
         assert x.get("v")  == number(2.17);
       }
-      ok(done) {
+      done {
         fail("didnt get even one row back.");
       }
     }
@@ -617,6 +616,7 @@ mod tests {
     pure fn result_get<T: copy, U>(res: result::t<T, U>) : success(res) -> T {
       alt res {
         ok(t) { t }
+        err(_) { fail }
       }
     }
   }
