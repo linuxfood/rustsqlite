@@ -33,7 +33,7 @@ use std;
 import libc::*;
 import std::map;
 import std::map::hashmap;
-import result::{ok, err, success};
+import result::{ok, err, is_success};
 
 // export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
 //       sqlite_column_type, sqlite_result, sqlite_row_result;
@@ -331,7 +331,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
     fn bind_params(values: [sqlite_bind_arg]) -> sqlite_result_code {
       let mut i = 0i;
-      for v in values {
+      for values.each {|v|
         let r = self.bind_param(i, v);
         if r != SQLITE_OK {
           ret r;
@@ -449,13 +449,13 @@ mod tests {
 
   fn checked_open() -> sqlite_dbh {
     let dbh = sqlite_open(":memory:");
-    check success(dbh);
+    check is_success(dbh);
     ret result::get(dbh);
   }
 
   fn checked_exec(dbh: sqlite_dbh, sql: str) {
     let r = dbh.exec(sql);
-    check success(r);
+    check is_success(r);
   }
 
   #[test]
@@ -610,11 +610,11 @@ mod tests {
     check is_ok_and(r2, true);
 
     pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
-      check success(r);
+      check is_success(r);
       ret result_get(r) == v;
     }
 
-    pure fn result_get<T: copy, U>(res: result::result<T, U>) : success(res) -> T {
+    pure fn result_get<T: copy, U>(res: result::result<T, U>) : is_success(res) -> T {
       alt res {
         ok(t) { t }
         err(_) { fail }
