@@ -33,7 +33,7 @@ use std;
 import libc::*;
 import std::map;
 import std::map::hashmap;
-import result::{ok, err, is_success};
+import result::{ok, err, is_ok};
 
 // export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
 //       sqlite_column_type, sqlite_result, sqlite_row_result;
@@ -120,7 +120,7 @@ iface sqlite_stmt {
 
 iface sqlite_dbh {
   fn get_errmsg() -> str;
-  fn prepare(sql: str, &_tail: option<str>) -> sqlite_result<sqlite_stmt>;
+  fn prepare(sql: str, _tail: option<str>) -> sqlite_result<sqlite_stmt>;
   fn exec(sql: str) -> sqlite_result<sqlite_result_code>;
   fn get_changes() -> int;
   fn get_last_insert_rowid() -> i64;
@@ -133,7 +133,7 @@ enum _stmt {}
 
 enum _notused {}
 
-native mod sqlite3 {
+extern mod sqlite3 {
   fn sqlite3_open(path: *c_char, hnd: **_dbh) -> sqlite_result_code;
   fn sqlite3_close(dbh: *_dbh) -> sqlite_result_code;
   fn sqlite3_errmsg(dbh: *_dbh) -> *c_char;
@@ -177,14 +177,30 @@ native mod sqlite3 {
 
 }
 
-resource _sqlite_dbh(dbh: *_dbh) {
-  log(debug, ("freeing dbh resource: ", dbh));
-  sqlite3::sqlite3_close(dbh);
+class _sqlite_dbh {
+    let dbh: *_dbh;
+
+    new(dbh: *_dbh) {
+        self.dbh = dbh;
+    }
+
+    drop {
+        log(debug, ("freeing dbh resource: ", self.dbh));
+        sqlite3::sqlite3_close(self.dbh);
+    }
 }
 
-resource _sqlite_stmt(stmt: *_stmt) {
-  log(debug, ("freeing stmt resource: ", stmt));
-  sqlite3::sqlite3_finalize(stmt);
+class _sqlite_stmt {
+    let stmt: *_stmt;
+
+    new(stmt: *_stmt) {
+        self.stmt = stmt;
+    }
+
+    drop {
+        log(debug, ("freeing stmt resource: ", self.stmt));
+        sqlite3::sqlite3_finalize(self.stmt);
+    }
 }
 
 fn sqlite_complete(sql: str) -> sqlite_result<bool> {
@@ -331,7 +347,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
     fn bind_params(values: [sqlite_bind_arg]) -> sqlite_result_code {
       let mut i = 0i;
-      for values.each {|v|
+      for values.each |v| {
         let r = self.bind_param(i, v);
         if r != SQLITE_OK {
           ret r;
@@ -348,7 +364,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
 
         text(v) {
           let l = str::len(v);
-          r = str::as_c_str(v, { |_v|
+          r = str::as_c_str(v, |_v| {
             // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
             //        of copying when binding text or blob values.
             sqlite3::sqlite3_bind_text(stmt, i as c_int, _v, l as c_int, -1 as c_int)
@@ -395,7 +411,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
       ret sqlite3::sqlite3_last_insert_rowid(dbh);
     }
 
-    fn prepare(sql: str, &_tail: option<str>) -> sqlite_result<sqlite_stmt> {
+    fn prepare(sql: str, _tail: option<str>) -> sqlite_result<sqlite_stmt> {
       let new_stmt : *_stmt = ptr::null();
       let dbh = self._dbh;
       let mut r = str::as_c_str(sql, { |_sql|
@@ -411,7 +427,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
     fn exec(sql: str) -> sqlite_result<sqlite_result_code> {
       let dbh = self._dbh;
       let mut r = SQLITE_ERROR;
-      str::as_c_str(sql, { |_sql|
+      str::as_c_str(sql, |_sql| {
         r = sqlite3::sqlite3_exec(dbh, _sql, ptr::null(), ptr::null(), ptr::null())
       });
       if r == SQLITE_OK {
@@ -427,7 +443,7 @@ fn sqlite_open(path: str) -> sqlite_result<sqlite_dbh> {
   };
 
   let new_dbh : *_dbh = ptr::null();
-  let r = str::as_c_str(path, { |_path|
+  let r = str::as_c_str(path, |_path| {
     sqlite3::sqlite3_open(_path, ptr::addr_of(new_dbh))
   });
   if r != SQLITE_OK {
@@ -449,13 +465,13 @@ mod tests {
 
   fn checked_open() -> sqlite_dbh {
     let dbh = sqlite_open(":memory:");
-    check is_success(dbh);
+    check is_ok(dbh);
     ret result::get(dbh);
   }
 
   fn checked_exec(dbh: sqlite_dbh, sql: str) {
     let r = dbh.exec(sql);
-    check is_success(r);
+    check is_ok(r);
   }
 
   #[test]
@@ -610,11 +626,11 @@ mod tests {
     check is_ok_and(r2, true);
 
     pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
-      check is_success(r);
+      check is_ok(r);
       ret result_get(r) == v;
     }
 
-    pure fn result_get<T: copy, U>(res: result::result<T, U>) : is_success(res) -> T {
+    pure fn result_get<T: copy, U>(res: result::result<T, U>) : is_ok(res) -> T {
       alt res {
         ok(t) { t }
         err(_) { fail }
