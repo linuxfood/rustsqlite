@@ -28,12 +28,17 @@
 ** ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ** POSSIBILITY OF SUCH DAMAGE.
 */
+/*
+#[warn(non_camel_case_types)];
+#[warn(deprecated_pattern)];
+*/
+#[warn(deprecated_mode)];
 
 use std;
 import libc::*;
 import std::map;
 import std::map::hashmap;
-import result::{Result, Ok, Err, is_ok};
+import result::{Result, Ok, Err, is_ok, get};
 import option::{Option, Some, None};
 import cmp::{Eq};
 
@@ -130,9 +135,12 @@ enum sqlite_column_type {
 }
 
 type sqlite_result<T> = result::Result<T, sqlite_result_code>;
+
+type RowMap = map::hashmap<~str, sqlite_bind_arg>;
+
 enum sqlite_row_result {
-  row(map::hashmap<~str, sqlite_bind_arg>),
-  done(),
+  row(RowMap),
+  done,
 }
 
 trait sqlite_stmt {
@@ -152,17 +160,17 @@ trait sqlite_stmt {
   fn get_column_type(i: int) -> sqlite_column_type;
   fn get_column_names() -> ~[~str];
 
-  fn get_bind_index(name: ~str) -> int;
+  fn get_bind_index(name: &str) -> int;
 
-  fn bind_param(i: int, value: sqlite_bind_arg) -> sqlite_result_code;
-  fn bind_params(values: ~[sqlite_bind_arg]) -> sqlite_result_code;
+  fn bind_param(i: int, +value: sqlite_bind_arg) -> sqlite_result_code;
+  fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code;
 }
 
 
 trait sqlite_dbh {
   fn get_errmsg() -> ~str;
-  fn prepare(sql: ~str, _tail: Option<~str>) -> sqlite_result<sqlite_stmt>;
-  fn exec(sql: ~str) -> sqlite_result<sqlite_result_code>;
+  fn prepare(sql: &str, +_tail: Option<&str>) -> sqlite_result<sqlite_stmt>;
+  fn exec(sql: &str) -> sqlite_result<sqlite_result_code>;
   fn get_changes() -> int;
   fn get_last_insert_rowid() -> i64;
 
@@ -236,7 +244,7 @@ struct _sqlite_stmt {
     }
 }
 
-fn sqlite_complete(sql: ~str) -> sqlite_result<bool> {
+fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
   let r = str::as_c_str(sql, { |_sql|
     sqlite3::sqlite3_complete(_sql)
   }) as int;
@@ -251,7 +259,7 @@ fn sqlite_complete(sql: ~str) -> sqlite_result<bool> {
   }
 }
 
-fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
+fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
   type sqliteState = {
     _dbh: *_dbh,
     _res: _sqlite_dbh
@@ -283,7 +291,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       if is_row == SQLITE_ROW {
         let column_cnt = self.get_column_count();
         let mut i = 0;
-        let sqlrow = map::str_hash::<sqlite_bind_arg>();
+        let sqlrow: RowMap = map::hashmap();
         while( i < column_cnt ) {
           let name = self.get_column_name(i);
           let coltype = self.get_column_type(i);
@@ -338,7 +346,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       return str::unsafe::from_c_str( sqlite3::sqlite3_column_text(stmt, i as c_int) );
     }
 
-    fn get_bind_index(name: ~str) -> int {
+    fn get_bind_index(name: &str) -> int {
       let stmt = self._stmt;
       return str::as_c_str(name, { |_name|
         sqlite3::sqlite3_bind_parameter_index(stmt, _name) as int
@@ -380,7 +388,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       return r;
     }
 
-    fn bind_params(values: ~[sqlite_bind_arg]) -> sqlite_result_code {
+    fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code {
       let mut i = 0i;
       for values.each |v| {
         let r = self.bind_param(i, v);
@@ -392,7 +400,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       return SQLITE_OK;
     }
 
-    fn bind_param(i: int, value: sqlite_bind_arg) -> sqlite_result_code unsafe {
+    fn bind_param(i: int, +value: sqlite_bind_arg) -> sqlite_result_code unsafe {
       let stmt = self._stmt;
       let mut r = match value {
 
@@ -439,7 +447,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       return sqlite3::sqlite3_last_insert_rowid(dbh);
     }
 
-    fn prepare(sql: ~str, _tail: Option<~str>) -> sqlite_result<sqlite_stmt> {
+    fn prepare(sql: &str, +_tail: Option<&str>) -> sqlite_result<sqlite_stmt> {
       let new_stmt : *_stmt = ptr::null();
       let dbh = self._dbh;
       let mut r = str::as_c_str(sql, |_sql| {
@@ -452,7 +460,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
       return Err(r);
     }
 
-    fn exec(sql: ~str) -> sqlite_result<sqlite_result_code> {
+    fn exec(sql: &str) -> sqlite_result<sqlite_result_code> {
       let dbh = self._dbh;
       let mut r = SQLITE_ERROR;
       str::as_c_str(sql, |_sql| {
@@ -484,7 +492,7 @@ fn sqlite_open(path: ~str) -> sqlite_result<sqlite_dbh> {
 #[cfg(test)]
 mod tests {
 
-  fn checked_prepare(dbh: sqlite_dbh, sql: ~str) -> sqlite_stmt {
+  fn checked_prepare(dbh: sqlite_dbh, sql: &str) -> sqlite_stmt {
     match dbh.prepare(sql, None) {
       Ok(s)  => { return s; }
       Err(x) => { fail #fmt("sqlite error: \"%s\" (%?)", dbh.get_errmsg(), x); }
@@ -492,12 +500,12 @@ mod tests {
   }
 
   fn checked_open() -> sqlite_dbh {
-    let dbh = sqlite_open(~":memory:");
+    let dbh = sqlite_open(&":memory:");
     assert is_ok(dbh);
     return result::get(dbh);
   }
 
-  fn checked_exec(dbh: sqlite_dbh, sql: ~str) {
+  fn checked_exec(dbh: sqlite_dbh, sql: &str) {
     let r = dbh.exec(sql);
     assert is_ok(r);
   }
@@ -510,15 +518,15 @@ mod tests {
   #[test]
   fn exec_create_tbl() {
     let dbh = checked_open();
-    checked_exec(dbh, ~"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
   }
 
   #[test]
   fn prepare_insert_stmt() {
     let dbh = checked_open();
 
-    checked_exec(dbh, ~"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
-    let sth = checked_prepare(dbh, ~"INSERT OR IGNORE INTO test (id) VALUES (1)");
+    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    let sth = checked_prepare(dbh, &"INSERT OR IGNORE INTO test (id) VALUES (1)");
     let res = sth.step();
     #error("prepare_insert_stmt step res: %?", res);
   }
@@ -528,13 +536,13 @@ mod tests {
     let dbh = checked_open();
 
     checked_exec(dbh,
-      ~"BEGIN;
+      &"BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT);
       INSERT OR IGNORE INTO test (id) VALUES (1);
       COMMIT;"
     );
 
-    let sth = checked_prepare(dbh, ~"SELECT id FROM test WHERE id = 1;");
+    let sth = checked_prepare(dbh, &"SELECT id FROM test WHERE id = 1;");
     assert sth.step() == SQLITE_ROW;
     assert sth.get_int(0) == 1;
     assert sth.step() == SQLITE_DONE;
@@ -544,14 +552,14 @@ mod tests {
   fn prepared_stmt_bind() {
     let dbh = checked_open();
 
-    checked_exec(dbh, ~"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
     checked_exec(dbh,
-      ~"INSERT OR IGNORE INTO test (id) VALUES(2);"
-    + ~"INSERT OR IGNORE INTO test (id) VALUES(3);"
-    + ~"INSERT OR IGNORE INTO test (id) VALUES(4);"
+      &"INSERT OR IGNORE INTO test (id) VALUES(2);
+        INSERT OR IGNORE INTO test (id) VALUES(3);
+        INSERT OR IGNORE INTO test (id) VALUES(4);"
     );
-    let sth = checked_prepare(dbh, ~"SELECT id FROM test WHERE id > ? AND id < ?");
+    let sth = checked_prepare(dbh, &"SELECT id FROM test WHERE id > ? AND id < ?");
     assert sth.bind_param(1, integer(2)) == SQLITE_OK;
     assert sth.bind_param(2, integer(4)) == SQLITE_OK;
 
@@ -564,12 +572,12 @@ mod tests {
     let dbh = checked_open();
 
     checked_exec(dbh,
-      ~"BEGIN;
-      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
-      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
-      COMMIT;"
+      &"BEGIN;
+        CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+        INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+        COMMIT;"
     );
-    let sth = checked_prepare(dbh, ~"SELECT * FROM test");
+    let sth = checked_prepare(dbh, &"SELECT * FROM test");
     assert sth.step() == SQLITE_ROW;
     assert sth.get_column_names() == ~[~"id", ~"v"];
   }
@@ -579,12 +587,12 @@ mod tests {
     let dbh = checked_open();
 
     checked_exec(dbh,
-      ~"BEGIN;
-      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
-      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
-      COMMIT;"
+      &"BEGIN;
+        CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+        INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+        COMMIT;"
     );
-    let _sth = checked_prepare(dbh, ~"SELECT q FRO test");
+    let _sth = checked_prepare(dbh, &"SELECT q FRO test");
   }
 
   #[test]
@@ -592,21 +600,20 @@ mod tests {
     let dbh = checked_open();
 
     checked_exec(dbh,
-      ~"BEGIN;
-      CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
-      INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
-      COMMIT;
-      "
+      &"BEGIN;
+        CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+        INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
+        COMMIT;"
     );
-    let sth = checked_prepare(dbh, ~"SELECT * FROM test WHERE v=:Name");
-    assert sth.get_bind_index(~":Name") == 1;
+    let sth = checked_prepare(dbh, &"SELECT * FROM test WHERE v=:Name");
+    assert sth.get_bind_index(&":Name") == 1;
   }
 
   #[test]
   fn last_insert_id() {
     let dbh = checked_open();
     checked_exec(dbh,
-      ~"
+      &"
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (v TEXT);
       INSERT OR IGNORE INTO test (v) VALUES ('This is a really long string.');
@@ -621,7 +628,7 @@ mod tests {
   fn step_row_basics() {
     let dbh = checked_open();
     checked_exec(dbh,
-      ~"
+      &"
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER, k TEXT, v REAL);
       INSERT OR IGNORE INTO test (id, k, v) VALUES(1, 'pi', 3.1415);
@@ -630,7 +637,7 @@ mod tests {
       COMMIT;
       "
     );
-    let sth = checked_prepare(dbh, ~"SELECT * FROM test WHERE id=2");
+    let sth = checked_prepare(dbh, &"SELECT * FROM test WHERE id=2");
     let r: sqlite_result<sqlite_row_result> = sth.step_row();
     let possible_row: sqlite_row_result = result::get(r);
     match possible_row {
@@ -648,22 +655,14 @@ mod tests {
 
   #[test]
   fn check_complete_sql() {
-    let r1 = sqlite_complete(~"SELECT * FROM");
-    let r2 = sqlite_complete(~"SELECT * FROM bob;");
+    let r1 = sqlite_complete(&"SELECT * FROM");
+    let r2 = sqlite_complete(&"SELECT * FROM bob;");
     assert is_ok_and(r1, false);
     assert is_ok_and(r2, true);
 
     pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
       assert is_ok(r);
-      return result_get(r) == v;
-    }
-
-    pure fn result_get<T: Copy, U>(res: result::Result<T, U>) -> T {
-      assert is_ok(res);
-      match res {
-        Ok(t)  => { t }
-        Err(_) => { fail }
-      }
+      return get(r) == v;
     }
   }
 }
