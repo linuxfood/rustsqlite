@@ -1,6 +1,6 @@
 #[link(
   name = "sqlite",
-  vers = "0.01",
+  vers = "0.02",
   uuid = "5dd017c1-a8fb-458f-b430-cecf793ffbd5"
 )];
 #[crate_type = "lib"];
