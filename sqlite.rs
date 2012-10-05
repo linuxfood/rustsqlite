@@ -28,19 +28,16 @@
 ** ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ** POSSIBILITY OF SUCH DAMAGE.
 */
-/*
-#[warn(non_camel_case_types)];
 #[warn(deprecated_pattern)];
-*/
 #[warn(deprecated_mode)];
 
-use std;
-import libc::*;
-import std::map;
-import std::map::hashmap;
-import result::{Result, Ok, Err, is_ok, get};
-import option::{Option, Some, None};
-import cmp::{Eq};
+extern mod std;
+use libc::*;
+use std::map;
+use std::map::HashMap;
+use result::{Result, Ok, Err, is_ok, get};
+use option::{Option, Some, None};
+use cmp::{Eq};
 
 // export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
 //       sqlite_column_type, sqlite_result, sqlite_row_result;
@@ -80,8 +77,8 @@ enum sqlite_result_code {
 }
 
 impl sqlite_result_code : Eq {
-   pure fn eq(&&other: sqlite_result_code) -> bool { self as int == other as int }
-   pure fn ne(&&other: sqlite_result_code) -> bool { !self.eq(other) }
+   pure fn eq(other: &sqlite_result_code) -> bool { self as int == *other as int }
+   pure fn ne(other: &sqlite_result_code) -> bool { !self.eq(other) }
 }
 
 enum sqlite_bind_arg {
@@ -93,37 +90,37 @@ enum sqlite_bind_arg {
 }
 
 impl sqlite_bind_arg : Eq {
-  pure fn eq(&&other: sqlite_bind_arg) -> bool {
+  pure fn eq(other: &sqlite_bind_arg) -> bool {
     match self {
-      text(ss) =>
-         match other {
-            text(sss) => ss == sss,
+      text(copy ss) =>
+         match *other {
+            text(copy sss) => ss == sss,
              _        => false
          },
-      number(ff) =>
-         match other {
-            number(fff) => ff == fff,
+      number(copy ff) =>
+         match *other {
+            number(copy fff) => ff == fff,
              _          => false
          },
-      integer(ii) =>
-         match other {
-            integer(iii) => ii == iii,
+      integer(copy ii) =>
+         match *other {
+            integer(copy iii) => ii == iii,
              _           => false
          },
-      blob(bb) =>
-         match other {
-            blob(bbb) => bb == bbb,
+      blob(copy bb) =>
+         match *other {
+            blob(copy bbb) => bb == bbb,
              _        => false
          },
       null() =>
-         match other {
+         match *other {
             null() => true,
              _     => false
          },
     }
   }
 
-  pure fn ne(&&other: sqlite_bind_arg) -> bool { !self.eq(other) }
+  pure fn ne(other: &sqlite_bind_arg) -> bool { !self.eq(other) }
 }
 
 enum sqlite_column_type {
@@ -136,7 +133,7 @@ enum sqlite_column_type {
 
 type sqlite_result<T> = result::Result<T, sqlite_result_code>;
 
-type RowMap = map::hashmap<~str, sqlite_bind_arg>;
+type RowMap = map::HashMap<~str, sqlite_bind_arg>;
 
 enum sqlite_row_result {
   row(RowMap),
@@ -162,14 +159,14 @@ trait sqlite_stmt {
 
   fn get_bind_index(name: &str) -> int;
 
-  fn bind_param(i: int, +value: sqlite_bind_arg) -> sqlite_result_code;
+  fn bind_param(i: int, value: &sqlite_bind_arg) -> sqlite_result_code;
   fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code;
 }
 
 
 trait sqlite_dbh {
   fn get_errmsg() -> ~str;
-  fn prepare(sql: &str, +_tail: Option<&str>) -> sqlite_result<sqlite_stmt>;
+  fn prepare(sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt>;
   fn exec(sql: &str) -> sqlite_result<sqlite_result_code>;
   fn get_changes() -> int;
   fn get_last_insert_rowid() -> i64;
@@ -291,7 +288,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       if is_row == SQLITE_ROW {
         let column_cnt = self.get_column_count();
         let mut i = 0;
-        let sqlrow: RowMap = map::hashmap();
+        let sqlrow: RowMap = map::HashMap();
         while( i < column_cnt ) {
           let name = self.get_column_name(i);
           let coltype = self.get_column_type(i);
@@ -303,7 +300,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
             sqlite_null    => sqlrow.insert(name, null),
           };
           if res == false {
-            fail ~"Couldn't insert a value into the hashmap for sqlrow!";
+            fail ~"Couldn't insert a value into the map for sqlrow!";
           } 
           i += 1;
         }
@@ -324,7 +321,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
     fn get_blob(i: int) -> ~[u8] unsafe {
       let stmt = self._stmt;
       let len  = self.get_bytes(i);
-      let mut bytes : ~[u8] = vec::unsafe::from_buf(
+      let mut bytes : ~[u8] = vec::raw::from_buf(
         sqlite3::sqlite3_column_blob(stmt, i as c_int),
         len as uint
       );
@@ -343,7 +340,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
 
     fn get_text(i: int) -> ~str unsafe {
       let stmt = self._stmt;
-      return str::unsafe::from_c_str( sqlite3::sqlite3_column_text(stmt, i as c_int) );
+      return str::raw::from_c_str( sqlite3::sqlite3_column_text(stmt, i as c_int) );
     }
 
     fn get_bind_index(name: &str) -> int {
@@ -360,7 +357,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
 
     fn get_column_name(i: int) -> ~str unsafe {
       let stmt = self._stmt;
-      return str::unsafe::from_c_str( sqlite3::sqlite3_column_name(stmt, i as c_int) );
+      return str::raw::from_c_str( sqlite3::sqlite3_column_name(stmt, i as c_int) );
     }
 
     fn get_column_type(i: int) -> sqlite_column_type {
@@ -382,7 +379,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       let mut i    = 0;
       let mut r    = ~[];
       while(i < cnt){
-        vec::push(r, self.get_column_name(i));
+        vec::push(&mut r, self.get_column_name(i));
         i += 1;
       }
       return r;
@@ -400,11 +397,11 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       return SQLITE_OK;
     }
 
-    fn bind_param(i: int, +value: sqlite_bind_arg) -> sqlite_result_code unsafe {
+    fn bind_param(i: int, value: &sqlite_bind_arg) -> sqlite_result_code unsafe {
       let stmt = self._stmt;
-      let mut r = match value {
+      let mut r = match *value {
 
-        text(v) => {
+        text(copy v) => {
           let l = str::len(v);
           str::as_c_str(v, |_v| {
             // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
@@ -413,16 +410,16 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
           })
         }
 
-        blob(v) => {
+        blob(copy v) => {
           let l = vec::len(v);
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
-          sqlite3::sqlite3_bind_blob(stmt, i as c_int, vec::unsafe::to_ptr(v), l as c_int, -1 as c_int)
+          sqlite3::sqlite3_bind_blob(stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
         }
 
-        integer(v) => { sqlite3::sqlite3_bind_int(stmt, i as c_int, v as c_int) }
+        integer(copy v) => { sqlite3::sqlite3_bind_int(stmt, i as c_int, v as c_int) }
 
-        number(v) => { sqlite3::sqlite3_bind_double(stmt, i as c_int, v) }
+        number(copy v) => { sqlite3::sqlite3_bind_double(stmt, i as c_int, v) }
 
         null => { sqlite3::sqlite3_bind_null(stmt, i as c_int) }
 
@@ -434,7 +431,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
 
   impl sqliteState : sqlite_dbh {
     fn get_errmsg() -> ~str unsafe {
-      return str::unsafe::from_c_str(sqlite3::sqlite3_errmsg(self._dbh));
+      return str::raw::from_c_str(sqlite3::sqlite3_errmsg(self._dbh));
     }
 
     fn get_changes() -> int {
@@ -447,11 +444,11 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       return sqlite3::sqlite3_last_insert_rowid(dbh);
     }
 
-    fn prepare(sql: &str, +_tail: Option<&str>) -> sqlite_result<sqlite_stmt> {
+    fn prepare(sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt> {
       let new_stmt : *_stmt = ptr::null();
       let dbh = self._dbh;
       let mut r = str::as_c_str(sql, |_sql| {
-        sqlite3::sqlite3_prepare_v2( dbh, _sql, str::len(sql) as c_int, ptr::addr_of(new_stmt), ptr::null())
+        sqlite3::sqlite3_prepare_v2( dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
       });
       if r == SQLITE_OK {
         log(debug, (~"created new stmt:", new_stmt));
@@ -480,7 +477,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
 
   let new_dbh : *_dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
-    sqlite3::sqlite3_open(_path, ptr::addr_of(new_dbh))
+    sqlite3::sqlite3_open(_path, ptr::addr_of(&new_dbh))
   });
   if r != SQLITE_OK {
     return Err(r);
@@ -493,7 +490,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
 mod tests {
 
   fn checked_prepare(dbh: sqlite_dbh, sql: &str) -> sqlite_stmt {
-    match dbh.prepare(sql, None) {
+    match dbh.prepare(sql, &None) {
       Ok(s)  => { return s; }
       Err(x) => { fail #fmt("sqlite error: \"%s\" (%?)", dbh.get_errmsg(), x); }
     }
@@ -501,13 +498,13 @@ mod tests {
 
   fn checked_open() -> sqlite_dbh {
     let dbh = sqlite_open(&":memory:");
-    assert is_ok(dbh);
-    return result::get(dbh);
+    assert is_ok(&dbh);
+    return get(&dbh);
   }
 
   fn checked_exec(dbh: sqlite_dbh, sql: &str) {
     let r = dbh.exec(sql);
-    assert is_ok(r);
+    assert is_ok(&r);
   }
 
   #[test]
@@ -560,8 +557,8 @@ mod tests {
         INSERT OR IGNORE INTO test (id) VALUES(4);"
     );
     let sth = checked_prepare(dbh, &"SELECT id FROM test WHERE id > ? AND id < ?");
-    assert sth.bind_param(1, integer(2)) == SQLITE_OK;
-    assert sth.bind_param(2, integer(4)) == SQLITE_OK;
+    assert sth.bind_param(1, &integer(2)) == SQLITE_OK;
+    assert sth.bind_param(2, &integer(4)) == SQLITE_OK;
 
     assert sth.step() == SQLITE_ROW;
     assert sth.get_num(0) as int == 3;
@@ -639,10 +636,9 @@ mod tests {
     );
     let sth = checked_prepare(dbh, &"SELECT * FROM test WHERE id=2");
     let r: sqlite_result<sqlite_row_result> = sth.step_row();
-    let possible_row: sqlite_row_result = result::get(r);
+    let possible_row: sqlite_row_result = get(&r);
     match possible_row {
       row(x) => {
-        // x is a map::hashmap<~str, sqlite_bind_arg>
         assert x.get(~"id") == integer(2);
         assert x.get(~"k")  == text(~"e");
         assert x.get(~"v")  == number(2.17);
@@ -661,8 +657,8 @@ mod tests {
     assert is_ok_and(r2, true);
 
     pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
-      assert is_ok(r);
-      return get(r) == v;
+      assert is_ok(&r);
+      return get(&r) == v;
     }
   }
 }
