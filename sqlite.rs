@@ -28,8 +28,8 @@
 ** ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ** POSSIBILITY OF SUCH DAMAGE.
 */
-#[warn(deprecated_pattern)];
-#[warn(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+#[forbid(deprecated_mode)];
 
 extern mod std;
 use libc::*;
