@@ -35,12 +35,7 @@ extern mod std;
 use libc::*;
 use send_map::linear::LinearMap;
 
-// export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
-//       sqlite_column_type, sqlite_result, sqlite_row_result;
-
-// export sqlite_open;
-
-enum sqlite_result_code {
+pub enum sqlite_result_code {
   SQLITE_OK         =  0,
   SQLITE_ERROR      =  1,
   SQLITE_INTERNAL   =  2,
@@ -113,7 +108,7 @@ impl sqlite_result_code : cmp::Eq {
    pure fn ne(other: &sqlite_result_code) -> bool { !self.eq(other) }
 }
 
-enum sqlite_bind_arg {
+pub enum sqlite_bind_arg {
   text(~str),
   number(float),
   integer(int),
@@ -155,7 +150,7 @@ impl sqlite_bind_arg : cmp::Eq {
   pure fn ne(other: &sqlite_bind_arg) -> bool { !self.eq(other) }
 }
 
-enum sqlite_column_type {
+pub enum sqlite_column_type {
   sqlite_integer,
   sqlite_float,
   sqlite_text,
@@ -163,16 +158,16 @@ enum sqlite_column_type {
   sqlite_null,
 }
 
-type sqlite_result<T> = Result<T, sqlite_result_code>;
+pub type sqlite_result<T> = Result<T, sqlite_result_code>;
 
 type RowMap = LinearMap<~str, sqlite_bind_arg>;
 
-enum sqlite_row_result {
+pub enum sqlite_row_result {
   row(RowMap),
   done,
 }
 
-trait sqlite_stmt {
+pub trait sqlite_stmt {
   fn step() -> sqlite_result_code;
   fn step_row() -> sqlite_result<sqlite_row_result>;
   fn reset() -> sqlite_result_code;
@@ -196,7 +191,7 @@ trait sqlite_stmt {
 }
 
 
-trait sqlite_dbh {
+pub trait sqlite_dbh {
   fn get_errmsg() -> ~str;
   fn prepare(sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt>;
   fn exec(sql: &str) -> sqlite_result<sqlite_result_code>;
@@ -288,7 +283,7 @@ fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
   }
 }
 
-fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
+pub fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
   type sqliteState = {
     _dbh: *_dbh,
     _res: _sqlite_dbh
