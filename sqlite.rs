@@ -396,7 +396,7 @@ pub fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
         3 /* SQLITE_TEXT    */ => sqlite_text,
         4 /* SQLITE_BLOB    */ => sqlite_blob,
         5 /* SQLITE_NULL    */ => sqlite_null,
-        _ => fail #fmt("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
+        _ => fail fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
       };
       return res;
     }
@@ -519,7 +519,7 @@ mod tests {
   fn checked_prepare(dbh: sqlite_dbh, sql: &str) -> sqlite_stmt {
     match dbh.prepare(sql, &None) {
       Ok(s)  => { return s; }
-      Err(x) => { fail #fmt("sqlite error: \"%s\" (%?)", dbh.get_errmsg(), x); }
+      Err(x) => { fail fmt!("sqlite error: \"%s\" (%?)", dbh.get_errmsg(), x); }
     }
   }
 
@@ -553,7 +553,7 @@ mod tests {
     checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     let sth = checked_prepare(dbh, &"INSERT OR IGNORE INTO test (id) VALUES (1)");
     let res = sth.step();
-    #error("prepare_insert_stmt step res: %?", res);
+    debug!("prepare_insert_stmt step res: %?", res);
   }
 
   #[test]
@@ -607,7 +607,8 @@ mod tests {
     assert sth.get_column_names() == ~[~"id", ~"v"];
   }
 
-  #[test] #[should_fail]
+  #[test]
+  #[should_fail]
   fn failed_prepare() {
     let dbh = checked_open();
 
@@ -645,7 +646,7 @@ mod tests {
       COMMIT;
       "
     );
-    #error("last insert_id: %s", u64::str(dbh.get_last_insert_rowid() as u64));
+    debug!("last insert_id: %s", u64::str(dbh.get_last_insert_rowid() as u64));
     assert dbh.get_last_insert_rowid() == 1_i64;
   }
 
