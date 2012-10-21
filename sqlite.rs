@@ -33,8 +33,7 @@
 
 extern mod std;
 use libc::*;
-use std::map;
-use std::map::HashMap;
+use send_map::linear::LinearMap;
 
 // export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
 //       sqlite_column_type, sqlite_result, sqlite_row_result;
@@ -71,6 +70,42 @@ enum sqlite_result_code {
   SQLITE_NOTADB     = 26,
   SQLITE_ROW        = 100,
   SQLITE_DONE       = 101,
+}
+
+impl sqlite_result_code: to_str::ToStr {
+  pure fn to_str() -> ~str {
+    match self {
+      SQLITE_OK => ~"Ok",
+      SQLITE_ERROR => ~"SQLITE_ERROR",
+      SQLITE_INTERNAL => ~"SQLITE_INTERNAL",
+      SQLITE_PERM => ~"SQLITE_PERM",
+      SQLITE_ABORT => ~"SQLITE_ABORT",
+      SQLITE_BUSY => ~"SQLITE_BUSY",
+      SQLITE_LOCKED => ~"SQLITE_LOCKED",
+      SQLITE_NOMEM => ~"SQLITE_NOMEM",
+      SQLITE_READONLY => ~"SQLITE_READONLY",
+      SQLITE_INTERRUPT => ~"SQLITE_INTERRUPT",
+      SQLITE_IOERR => ~"SQLITE_IOERR",
+      SQLITE_CORRUPT => ~"SQLITE_CORRUPT",
+      SQLITE_NOTFOUND => ~"SQLITE_NOTFOUND",
+      SQLITE_FULL => ~"SQLITE_FULL",
+      SQLITE_CANTOPEN => ~"SQLITE_CANTOPEN",
+      SQLITE_PROTOCOL => ~"SQLITE_PROTOCOL",
+      SQLITE_EMPTY => ~"SQLITE_EMPTY",
+      SQLITE_SCHEMA => ~"SQLITE_SCHEMA",
+      SQLITE_TOOBIG => ~"SQLITE_TOOBIG",
+      SQLITE_CONSTRAINT => ~"SQLITE_CONSTRAINT",
+      SQLITE_MISMATCH => ~"SQLITE_MISMATCH",
+      SQLITE_MISUSE => ~"SQLITE_MISUSE",
+      SQLITE_NOLFS => ~"SQLITE_NOLFS",
+      SQLITE_AUTH => ~"SQLITE_AUTH",
+      SQLITE_FORMAT => ~"SQLITE_FORMAT",
+      SQLITE_RANGE => ~"SQLITE_RANGE",
+      SQLITE_NOTADB => ~"SQLITE_NOTADB",
+      SQLITE_ROW => ~"SQLITE_ROW",
+      SQLITE_DONE => ~"SQLITE_DONE",
+    }
+  }
 }
 
 impl sqlite_result_code : cmp::Eq {
@@ -128,9 +163,9 @@ enum sqlite_column_type {
   sqlite_null,
 }
 
-type sqlite_result<T> = result::Result<T, sqlite_result_code>;
+type sqlite_result<T> = Result<T, sqlite_result_code>;
 
-type RowMap = map::HashMap<~str, sqlite_bind_arg>;
+type RowMap = LinearMap<~str, sqlite_bind_arg>;
 
 enum sqlite_row_result {
   row(RowMap),
@@ -285,7 +320,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       if is_row == SQLITE_ROW {
         let column_cnt = self.get_column_count();
         let mut i = 0;
-        let sqlrow = map::HashMap();
+        let mut sqlrow = LinearMap();
         while( i < column_cnt ) {
           let name = self.get_column_name(i);
           let coltype = self.get_column_type(i);
@@ -494,14 +529,15 @@ mod tests {
   }
 
   fn checked_open() -> sqlite_dbh {
-    let dbh = sqlite_open(&":memory:");
-    assert is_ok(&dbh);
-    return get(&dbh);
+    match sqlite_open(":memory:") {
+      Ok(move dbh) => dbh,
+      Err(e) => fail e.to_str(),
+    }
   }
 
   fn checked_exec(dbh: sqlite_dbh, sql: &str) {
     let r = dbh.exec(sql);
-    assert is_ok(&r);
+    assert r.is_ok();
   }
 
   #[test]
@@ -632,13 +668,14 @@ mod tests {
       "
     );
     let sth = checked_prepare(dbh, &"SELECT * FROM test WHERE id=2");
-    let r: sqlite_result<sqlite_row_result> = sth.step_row();
-    let possible_row: sqlite_row_result = get(&r);
-    match possible_row {
-      row(x) => {
-        assert x.get(~"id") == integer(2);
-        assert x.get(~"k")  == text(~"e");
-        assert x.get(~"v")  == number(2.17);
+    let r = sth.step_row();
+    let possible_row = result::unwrap(r);
+    match move possible_row {
+      row(move x) => {
+        let mut x = x;
+        assert x.pop(&~"id") == Some(integer(2));
+        assert x.pop(&~"k")  == Some(text(~"e"));
+        assert x.pop(&~"v")  == Some(number(2.17));
       }
       done => {
         fail(~"didnt get even one row back.");
@@ -653,9 +690,9 @@ mod tests {
     assert is_ok_and(r1, false);
     assert is_ok_and(r2, true);
 
-    pure fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
-      assert is_ok(&r);
-      return get(&r) == v;
+    fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
+      assert r.is_ok();
+      return r.get() == v;
     }
   }
 }
