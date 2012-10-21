@@ -120,30 +120,30 @@ impl sqlite_bind_arg : cmp::Eq {
   pure fn eq(other: &sqlite_bind_arg) -> bool {
     match self {
       text(copy ss) =>
-         match *other {
-            text(copy sss) => ss == sss,
-             _        => false
+        match *other {
+          text(copy sss) => ss == sss,
+          _        => false
          },
       number(copy ff) =>
-         match *other {
-            number(copy fff) => ff == fff,
-             _          => false
-         },
+        match *other {
+          number(copy fff) => ff == fff,
+          _          => false
+        },
       integer(copy ii) =>
-         match *other {
-            integer(copy iii) => ii == iii,
-             _           => false
-         },
+        match *other {
+          integer(copy iii) => ii == iii,
+           _           => false
+        },
       blob(copy bb) =>
-         match *other {
-            blob(copy bbb) => bb == bbb,
-             _        => false
-         },
+        match *other {
+          blob(copy bbb) => bb == bbb,
+          _        => false
+        },
       null() =>
-         match *other {
-            null() => true,
-             _     => false
-         },
+        match *other {
+          null() => true,
+          _     => false
+        },
     }
   }
 
@@ -286,12 +286,12 @@ extern mod sqlite3 {
 }
 
 struct _sqlite_stmt {
-    stmt: *_stmt,
+  stmt: *_stmt,
 
-    drop {
-        log(debug, (~"freeing stmt resource: ", self.stmt));
-        sqlite3::sqlite3_finalize(self.stmt);
-    }
+  drop {
+    log(debug, (~"freeing stmt resource: ", self.stmt));
+    sqlite3::sqlite3_finalize(self.stmt);
+  }
 }
 
 fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
