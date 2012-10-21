@@ -321,7 +321,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
     fn get_blob(i: int) -> ~[u8] unsafe {
       let stmt = self._stmt;
       let len  = self.get_bytes(i);
-      let mut bytes : ~[u8] = vec::raw::from_buf(
+      let mut bytes = vec::raw::from_buf_raw(
         sqlite3::sqlite3_column_blob(stmt, i as c_int),
         len as uint
       );
