@@ -190,15 +190,50 @@ pub trait sqlite_stmt {
   fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code;
 }
 
+pub struct sqlite_dbh {
+  priv _dbh: *_dbh,
 
-pub trait sqlite_dbh {
-  fn get_errmsg() -> ~str;
-  fn prepare(sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt>;
-  fn exec(sql: &str) -> sqlite_result<sqlite_result_code>;
-  fn get_changes() -> int;
-  fn get_last_insert_rowid() -> i64;
+  drop {
+    debug!("freeing dbh resource: %?", self._dbh);
+    sqlite3::sqlite3_close(self._dbh);
+  }
+}
 
-  fn set_busy_timeout(ms: int) -> sqlite_result_code;
+impl sqlite_dbh {
+  fn get_errmsg(&self) -> ~str unsafe {
+    str::raw::from_c_str(sqlite3::sqlite3_errmsg(self._dbh))
+  }
+
+  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt> {
+    let new_stmt = ptr::null();
+    let mut r = str::as_c_str(sql, |_sql| {
+        sqlite3::sqlite3_prepare_v2(self._dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
+    });
+    if r == SQLITE_OK {
+      debug!("created new stmt: %?", new_stmt);
+      Ok({ _stmt: new_stmt, _res: _sqlite_stmt { stmt: new_stmt } } as sqlite_stmt)
+    } else {
+      Err(r)
+    }
+  }
+  fn exec(&self, sql: &str) -> sqlite_result<sqlite_result_code> {
+    let mut r = SQLITE_ERROR;
+    str::as_c_str(sql, |_sql| {
+      r = sqlite3::sqlite3_exec(self._dbh, _sql, ptr::null(), ptr::null(), ptr::null())
+    });
+
+    if r == SQLITE_OK { Ok(r) } else { Err(r) }
+  }
+  fn get_changes(&self) -> int {
+    sqlite3::sqlite3_changes(self._dbh) as int
+  }
+  fn get_last_insert_rowid(&self) -> i64 {
+    sqlite3::sqlite3_last_insert_rowid(self._dbh)
+  }
+
+  fn set_busy_timeout(&self, ms: int) -> sqlite_result_code {
+    sqlite3::sqlite3_busy_timeout(self._dbh, ms as c_int)
+  }
 }
 
 enum _dbh {}
@@ -250,15 +285,6 @@ extern mod sqlite3 {
 
 }
 
-struct _sqlite_dbh {
-    dbh: *_dbh,
-
-    drop {
-        log(debug, (~"freeing dbh resource: ", self.dbh));
-        sqlite3::sqlite3_close(self.dbh);
-    }
-}
-
 struct _sqlite_stmt {
     stmt: *_stmt,
 
@@ -283,234 +309,183 @@ fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
   }
 }
 
-pub fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
-  type sqliteState = {
-    _dbh: *_dbh,
-    _res: _sqlite_dbh
-  };
+type sqliteStmtState = {
+  _stmt: *_stmt,
+  _res: _sqlite_stmt
+};
 
-  type sqliteStmtState = {
-    _stmt: *_stmt,
-    _res: _sqlite_stmt
-  };
+impl sqliteStmtState : sqlite_stmt {
+  fn reset() -> sqlite_result_code {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_reset(stmt);
+  }
 
-  impl sqliteStmtState : sqlite_stmt {
-    fn reset() -> sqlite_result_code {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_reset(stmt);
-    }
+  fn clear_bindings() -> sqlite_result_code {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_clear_bindings(stmt);
+  }
 
-    fn clear_bindings() -> sqlite_result_code {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_clear_bindings(stmt);
-    }
+  fn step() -> sqlite_result_code {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_step(stmt);
+  }
 
-    fn step() -> sqlite_result_code {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_step(stmt);
-    }
-
-    fn step_row() -> sqlite_result<sqlite_row_result> {
-      let is_row: sqlite_result_code = self.step();
-      if is_row == SQLITE_ROW {
-        let column_cnt = self.get_column_count();
-        let mut i = 0;
-        let mut sqlrow = LinearMap();
-        while( i < column_cnt ) {
-          let name = self.get_column_name(i);
-          let coltype = self.get_column_type(i);
-          let res = match coltype {
-            sqlite_integer => sqlrow.insert(name, integer(self.get_int(i))),
-            sqlite_float   => sqlrow.insert(name, number(self.get_num(i))),
-            sqlite_text    => sqlrow.insert(name, text(self.get_text(i))),
-            sqlite_blob    => sqlrow.insert(name, blob(self.get_blob(i))),
-            sqlite_null    => sqlrow.insert(name, null),
-          };
-          if res == false {
-            fail ~"Couldn't insert a value into the map for sqlrow!";
-          } 
-          i += 1;
-        }
-
-        return Ok(row(sqlrow));
-      }
-      else if is_row == SQLITE_DONE {
-        return Ok(done);
-      }
-      return Err(is_row);
-    }
-
-    fn get_bytes(i: int) -> int {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_column_bytes(stmt, i as c_int) as int;
-    }
-
-    fn get_blob(i: int) -> ~[u8] unsafe {
-      let stmt = self._stmt;
-      let len  = self.get_bytes(i);
-      let mut bytes = vec::raw::from_buf_raw(
-        sqlite3::sqlite3_column_blob(stmt, i as c_int),
-        len as uint
-      );
-      return bytes;
-    }
-
-    fn get_int(i: int) -> int {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_column_int(stmt, i as c_int) as int;
-    }
-
-    fn get_num(i: int) -> float {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_column_double(stmt, i as c_int);
-    }
-
-    fn get_text(i: int) -> ~str unsafe {
-      let stmt = self._stmt;
-      return str::raw::from_c_str( sqlite3::sqlite3_column_text(stmt, i as c_int) );
-    }
-
-    fn get_bind_index(name: &str) -> int {
-      let stmt = self._stmt;
-      return str::as_c_str(name, { |_name|
-        sqlite3::sqlite3_bind_parameter_index(stmt, _name) as int
-      });
-    }
-
-    fn get_column_count() -> int {
-      let stmt = self._stmt;
-      return sqlite3::sqlite3_data_count(stmt) as int;
-    }
-
-    fn get_column_name(i: int) -> ~str unsafe {
-      let stmt = self._stmt;
-      return str::raw::from_c_str( sqlite3::sqlite3_column_name(stmt, i as c_int) );
-    }
-
-    fn get_column_type(i: int) -> sqlite_column_type {
-      let stmt = self._stmt;
-      let ct = sqlite3::sqlite3_column_type(stmt, i as c_int) as int;
-      let mut res = match ct {
-        1 /* SQLITE_INTEGER */ => sqlite_integer,
-        2 /* SQLITE_FLOAT   */ => sqlite_float,
-        3 /* SQLITE_TEXT    */ => sqlite_text,
-        4 /* SQLITE_BLOB    */ => sqlite_blob,
-        5 /* SQLITE_NULL    */ => sqlite_null,
-        _ => fail fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
-      };
-      return res;
-    }
-
-    fn get_column_names() -> ~[~str] {
-      let cnt  = self.get_column_count();
-      let mut i    = 0;
-      let mut r    = ~[];
-      while(i < cnt){
-        vec::push(&mut r, self.get_column_name(i));
-        i += 1;
-      }
-      return r;
-    }
-
-    fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code {
-      let mut i = 0i;
-      for values.each |v| {
-        let r = self.bind_param(i, v);
-        if r != SQLITE_OK {
-          return r;
+  fn step_row() -> sqlite_result<sqlite_row_result> {
+    let is_row: sqlite_result_code = self.step();
+    if is_row == SQLITE_ROW {
+      let column_cnt = self.get_column_count();
+      let mut i = 0;
+      let mut sqlrow = LinearMap();
+      while( i < column_cnt ) {
+        let name = self.get_column_name(i);
+        let coltype = self.get_column_type(i);
+        let res = match coltype {
+          sqlite_integer => sqlrow.insert(name, integer(self.get_int(i))),
+          sqlite_float   => sqlrow.insert(name, number(self.get_num(i))),
+          sqlite_text    => sqlrow.insert(name, text(self.get_text(i))),
+          sqlite_blob    => sqlrow.insert(name, blob(self.get_blob(i))),
+          sqlite_null    => sqlrow.insert(name, null),
+        };
+        if res == false {
+          fail ~"Couldn't insert a value into the map for sqlrow!";
         }
         i += 1;
       }
-      return SQLITE_OK;
+
+      return Ok(row(sqlrow));
     }
+    else if is_row == SQLITE_DONE {
+      return Ok(done);
+    }
+    return Err(is_row);
+  }
 
-    fn bind_param(i: int, value: &sqlite_bind_arg) -> sqlite_result_code unsafe {
-      let stmt = self._stmt;
-      let mut r = match *value {
+  fn get_bytes(i: int) -> int {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_column_bytes(stmt, i as c_int) as int;
+  }
 
-        text(copy v) => {
-          let l = str::len(v);
-          str::as_c_str(v, |_v| {
-            // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
-            //        of copying when binding text or blob values.
-            sqlite3::sqlite3_bind_text(stmt, i as c_int, _v, l as c_int, -1 as c_int)
-          })
-        }
+  fn get_blob(i: int) -> ~[u8] unsafe {
+    let stmt = self._stmt;
+    let len  = self.get_bytes(i);
+    let mut bytes = vec::raw::from_buf_raw(
+      sqlite3::sqlite3_column_blob(stmt, i as c_int),
+      len as uint
+    );
+    return bytes;
+  }
 
-        blob(copy v) => {
-          let l = vec::len(v);
+  fn get_int(i: int) -> int {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_column_int(stmt, i as c_int) as int;
+  }
+
+  fn get_num(i: int) -> float {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_column_double(stmt, i as c_int);
+  }
+
+  fn get_text(i: int) -> ~str unsafe {
+    let stmt = self._stmt;
+    return str::raw::from_c_str( sqlite3::sqlite3_column_text(stmt, i as c_int) );
+  }
+
+  fn get_bind_index(name: &str) -> int {
+    let stmt = self._stmt;
+    return str::as_c_str(name, { |_name|
+      sqlite3::sqlite3_bind_parameter_index(stmt, _name) as int
+    });
+  }
+
+  fn get_column_count() -> int {
+    let stmt = self._stmt;
+    return sqlite3::sqlite3_data_count(stmt) as int;
+  }
+
+  fn get_column_name(i: int) -> ~str unsafe {
+    let stmt = self._stmt;
+    return str::raw::from_c_str( sqlite3::sqlite3_column_name(stmt, i as c_int) );
+  }
+
+  fn get_column_type(i: int) -> sqlite_column_type {
+    let stmt = self._stmt;
+    let ct = sqlite3::sqlite3_column_type(stmt, i as c_int) as int;
+    let mut res = match ct {
+      1 /* SQLITE_INTEGER */ => sqlite_integer,
+      2 /* SQLITE_FLOAT   */ => sqlite_float,
+      3 /* SQLITE_TEXT    */ => sqlite_text,
+      4 /* SQLITE_BLOB    */ => sqlite_blob,
+      5 /* SQLITE_NULL    */ => sqlite_null,
+      _ => fail #fmt("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
+    };
+    return res;
+  }
+
+  fn get_column_names() -> ~[~str] {
+    let cnt  = self.get_column_count();
+    let mut i    = 0;
+    let mut r    = ~[];
+    while(i < cnt){
+      vec::push(&mut r, self.get_column_name(i));
+      i += 1;
+    }
+    return r;
+  }
+
+  fn bind_params(values: &[sqlite_bind_arg]) -> sqlite_result_code {
+    let mut i = 0i;
+    for values.each |v| {
+      let r = self.bind_param(i, v);
+      if r != SQLITE_OK {
+        return r;
+      }
+      i += 1;
+    }
+    return SQLITE_OK;
+  }
+
+  fn bind_param(i: int, value: &sqlite_bind_arg) -> sqlite_result_code unsafe {
+    let stmt = self._stmt;
+    let mut r = match *value {
+      text(copy v) => {
+        let l = str::len(v);
+        str::as_c_str(v, |_v| {
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
-          sqlite3::sqlite3_bind_blob(stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
-        }
-
-        integer(copy v) => { sqlite3::sqlite3_bind_int(stmt, i as c_int, v as c_int) }
-
-        number(copy v) => { sqlite3::sqlite3_bind_double(stmt, i as c_int, v) }
-
-        null => { sqlite3::sqlite3_bind_null(stmt, i as c_int) }
-
-      };
-
-      return r;
-    }
-  };
-
-  impl sqliteState : sqlite_dbh {
-    fn get_errmsg() -> ~str unsafe {
-      return str::raw::from_c_str(sqlite3::sqlite3_errmsg(self._dbh));
-    }
-
-    fn get_changes() -> int {
-      let dbh = self._dbh;
-      return sqlite3::sqlite3_changes(dbh) as int;
-    }
-
-    fn get_last_insert_rowid() -> i64 {
-      let dbh = self._dbh;
-      return sqlite3::sqlite3_last_insert_rowid(dbh);
-    }
-
-    fn prepare(sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt> {
-      let new_stmt : *_stmt = ptr::null();
-      let dbh = self._dbh;
-      let mut r = str::as_c_str(sql, |_sql| {
-        sqlite3::sqlite3_prepare_v2( dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
-      });
-      if r == SQLITE_OK {
-        log(debug, (~"created new stmt:", new_stmt));
-        return Ok({ _stmt: new_stmt, _res: _sqlite_stmt { stmt: new_stmt } } as sqlite_stmt);
+          sqlite3::sqlite3_bind_text(stmt, i as c_int, _v, l as c_int, -1 as c_int)
+        })
       }
-      return Err(r);
-    }
 
-    fn exec(sql: &str) -> sqlite_result<sqlite_result_code> {
-      let dbh = self._dbh;
-      let mut r = SQLITE_ERROR;
-      str::as_c_str(sql, |_sql| {
-        r = sqlite3::sqlite3_exec(dbh, _sql, ptr::null(), ptr::null(), ptr::null())
-      });
-      if r == SQLITE_OK {
-        return Ok(r);
+      blob(copy v) => {
+        let l = vec::len(v);
+        // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
+        //        of copying when binding text or blob values.
+        sqlite3::sqlite3_bind_blob(stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
       }
-      return Err(r);
-    }
 
-    fn set_busy_timeout(ms: int) -> sqlite_result_code {
-      let dbh = self._dbh;
-      return sqlite3::sqlite3_busy_timeout(dbh, ms as c_int);
-    }
-  };
+      integer(copy v) => { sqlite3::sqlite3_bind_int(stmt, i as c_int, v as c_int) }
 
+      number(copy v) => { sqlite3::sqlite3_bind_double(stmt, i as c_int, v) }
+
+      null => { sqlite3::sqlite3_bind_null(stmt, i as c_int) }
+
+    };
+
+    return r;
+  }
+}
+
+pub fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
   let new_dbh : *_dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
     sqlite3::sqlite3_open(_path, ptr::addr_of(&new_dbh))
   });
   if r != SQLITE_OK {
-    return Err(r);
+    Err(r)
+  } else {
+    debug!("created new dbh: %?", new_dbh);
+    Ok(sqlite_dbh { _dbh: new_dbh })
   }
-  log(debug, (~"created new dbh:", new_dbh));
-  return Ok({ _dbh: new_dbh, _res: _sqlite_dbh { dbh: new_dbh } } as sqlite_dbh);
 }
 
 #[cfg(test)]
@@ -530,7 +505,7 @@ mod tests {
     }
   }
 
-  fn checked_exec(dbh: sqlite_dbh, sql: &str) {
+  fn checked_exec(dbh: &sqlite_dbh, sql: &str) {
     let r = dbh.exec(sql);
     assert r.is_ok();
   }
@@ -543,14 +518,14 @@ mod tests {
   #[test]
   fn exec_create_tbl() {
     let dbh = checked_open();
-    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(&dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
   }
 
   #[test]
   fn prepare_insert_stmt() {
     let dbh = checked_open();
 
-    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(&dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     let sth = checked_prepare(dbh, &"INSERT OR IGNORE INTO test (id) VALUES (1)");
     let res = sth.step();
     debug!("prepare_insert_stmt step res: %?", res);
@@ -560,7 +535,7 @@ mod tests {
   fn prepare_select_stmt() {
     let dbh = checked_open();
 
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT);
       INSERT OR IGNORE INTO test (id) VALUES (1);
@@ -577,9 +552,9 @@ mod tests {
   fn prepared_stmt_bind() {
     let dbh = checked_open();
 
-    checked_exec(dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+    checked_exec(&dbh, &"BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"INSERT OR IGNORE INTO test (id) VALUES(2);
         INSERT OR IGNORE INTO test (id) VALUES(3);
         INSERT OR IGNORE INTO test (id) VALUES(4);"
@@ -596,7 +571,7 @@ mod tests {
   fn column_names() {
     let dbh = checked_open();
 
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"BEGIN;
         CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
         INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -612,7 +587,7 @@ mod tests {
   fn failed_prepare() {
     let dbh = checked_open();
 
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"BEGIN;
         CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
         INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -625,7 +600,7 @@ mod tests {
   fn bind_param_index() {
     let dbh = checked_open();
 
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"BEGIN;
         CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
         INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -638,7 +613,7 @@ mod tests {
   #[test]
   fn last_insert_id() {
     let dbh = checked_open();
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (v TEXT);
@@ -653,7 +628,7 @@ mod tests {
   #[test]
   fn step_row_basics() {
     let dbh = checked_open();
-    checked_exec(dbh,
+    checked_exec(&dbh,
       &"
       BEGIN;
       CREATE TABLE IF NOT EXISTS test (id INTEGER, k TEXT, v REAL);
