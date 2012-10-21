@@ -35,9 +35,6 @@ extern mod std;
 use libc::*;
 use std::map;
 use std::map::HashMap;
-use result::{Result, Ok, Err, is_ok, get};
-use option::{Option, Some, None};
-use cmp::{Eq};
 
 // export sqlite_open, sqlite_result_code, sqlite_stmt, sqlite_dbh, sqlite_bind_arg,
 //       sqlite_column_type, sqlite_result, sqlite_row_result;
@@ -76,7 +73,7 @@ enum sqlite_result_code {
   SQLITE_DONE       = 101,
 }
 
-impl sqlite_result_code : Eq {
+impl sqlite_result_code : cmp::Eq {
    pure fn eq(other: &sqlite_result_code) -> bool { self as int == *other as int }
    pure fn ne(other: &sqlite_result_code) -> bool { !self.eq(other) }
 }
@@ -89,7 +86,7 @@ enum sqlite_bind_arg {
   null(),
 }
 
-impl sqlite_bind_arg : Eq {
+impl sqlite_bind_arg : cmp::Eq {
   pure fn eq(other: &sqlite_bind_arg) -> bool {
     match self {
       text(copy ss) =>
@@ -288,7 +285,7 @@ fn sqlite_open(path: &str) -> sqlite_result<sqlite_dbh> {
       if is_row == SQLITE_ROW {
         let column_cnt = self.get_column_count();
         let mut i = 0;
-        let sqlrow: RowMap = map::HashMap();
+        let sqlrow = map::HashMap();
         while( i < column_cnt ) {
           let name = self.get_column_name(i);
           let coltype = self.get_column_type(i);
