@@ -150,12 +150,12 @@ impl sqlite_bind_arg : cmp::Eq {
   pure fn ne(other: &sqlite_bind_arg) -> bool { !self.eq(other) }
 }
 
-pub enum sqlite_column_type {
-  sqlite_integer,
-  sqlite_float,
-  sqlite_text,
-  sqlite_blob,
-  sqlite_null,
+pub enum ColumnType {
+  SQLITE_INTEGER,
+  SQLITE_FLOAT,
+  SQLITE_TEXT,
+  SQLITE_BLOB,
+  SQLITE_NULL,
 }
 
 pub type sqlite_result<T> = Result<T, sqlite_result_code>;
@@ -304,11 +304,11 @@ impl Stmt {
         let name = self.get_column_name(i);
         let coltype = self.get_column_type(i);
         let res = match coltype {
-          sqlite_integer => sqlrow.insert(name, integer(self.get_int(i))),
-          sqlite_float   => sqlrow.insert(name, number(self.get_num(i))),
-          sqlite_text    => sqlrow.insert(name, text(self.get_text(i))),
-          sqlite_blob    => sqlrow.insert(name, blob(self.get_blob(i))),
-          sqlite_null    => sqlrow.insert(name, null),
+          SQLITE_INTEGER => sqlrow.insert(name, integer(self.get_int(i))),
+          SQLITE_FLOAT   => sqlrow.insert(name, number(self.get_num(i))),
+          SQLITE_TEXT    => sqlrow.insert(name, text(self.get_text(i))),
+          SQLITE_BLOB    => sqlrow.insert(name, blob(self.get_blob(i))),
+          SQLITE_NULL    => sqlrow.insert(name, null),
         };
         if res == false {
           fail ~"Couldn't insert a value into the map for sqlrow!";
@@ -365,14 +365,14 @@ impl Stmt {
     return str::raw::from_c_str( sqlite3::sqlite3_column_name(self.stmt, i as c_int) );
   }
 
-  fn get_column_type(&self, i: int) -> sqlite_column_type {
+  fn get_column_type(&self, i: int) -> ColumnType {
     let ct = sqlite3::sqlite3_column_type(self.stmt, i as c_int) as int;
     let mut res = match ct {
-      1 /* SQLITE_INTEGER */ => sqlite_integer,
-      2 /* SQLITE_FLOAT   */ => sqlite_float,
-      3 /* SQLITE_TEXT    */ => sqlite_text,
-      4 /* SQLITE_BLOB    */ => sqlite_blob,
-      5 /* SQLITE_NULL    */ => sqlite_null,
+      1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
+      2 /* SQLITE_FLOAT   */ => SQLITE_FLOAT,
+      3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
+      4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
+      5 /* SQLITE_NULL    */ => SQLITE_NULL,
       _ => fail #fmt("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
     };
     return res;
