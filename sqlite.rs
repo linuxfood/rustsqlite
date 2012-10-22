@@ -162,11 +162,6 @@ pub type sqlite_result<T> = Result<T, sqlite_result_code>;
 
 type RowMap = LinearMap<~str, sqlite_bind_arg>;
 
-pub enum sqlite_row_result {
-  row(RowMap),
-  done,
-}
-
 pub struct Database {
   priv dbh: *dbh,
 
@@ -299,7 +294,7 @@ impl Stmt {
     sqlite3::sqlite3_step(self.stmt)
   }
 
-  fn step_row(&self) -> sqlite_result<sqlite_row_result> {
+  fn step_row(&self) -> sqlite_result<Option<RowMap>> {
     let is_row: sqlite_result_code = self.step();
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
@@ -321,10 +316,10 @@ impl Stmt {
         i += 1;
       }
 
-      Ok(row(sqlrow))
+      Ok(Some(sqlrow))
     }
     else if is_row == SQLITE_DONE {
-      Ok(done)
+      Ok(None)
     } else {
       Err(is_row)
     }
@@ -603,13 +598,13 @@ mod tests {
     let r = sth.step_row();
     let possible_row = result::unwrap(r);
     match move possible_row {
-      row(move x) => {
+      Some(move x) => {
         let mut x = x;
         assert x.pop(&~"id") == Some(integer(2));
         assert x.pop(&~"k")  == Some(text(~"e"));
         assert x.pop(&~"v")  == Some(number(2.17));
       }
-      done => {
+      None => {
         fail(~"didnt get even one row back.");
       }
     }
