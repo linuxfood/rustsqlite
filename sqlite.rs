@@ -35,7 +35,7 @@ extern mod std;
 use libc::*;
 use send_map::linear::LinearMap;
 
-pub enum sqlite_result_code {
+pub enum ResultCode {
   SQLITE_OK         =  0,
   SQLITE_ERROR      =  1,
   SQLITE_INTERNAL   =  2,
@@ -67,7 +67,7 @@ pub enum sqlite_result_code {
   SQLITE_DONE       = 101,
 }
 
-impl sqlite_result_code: to_str::ToStr {
+impl ResultCode: to_str::ToStr {
   pure fn to_str() -> ~str {
     match self {
       SQLITE_OK => ~"Ok",
@@ -103,9 +103,9 @@ impl sqlite_result_code: to_str::ToStr {
   }
 }
 
-impl sqlite_result_code : cmp::Eq {
-   pure fn eq(other: &sqlite_result_code) -> bool { self as int == *other as int }
-   pure fn ne(other: &sqlite_result_code) -> bool { !self.eq(other) }
+impl ResultCode : cmp::Eq {
+   pure fn eq(other: &ResultCode) -> bool { self as int == *other as int }
+   pure fn ne(other: &ResultCode) -> bool { !self.eq(other) }
 }
 
 pub enum sqlite_bind_arg {
@@ -158,7 +158,7 @@ pub enum ColumnType {
   SQLITE_NULL,
 }
 
-pub type sqlite_result<T> = Result<T, sqlite_result_code>;
+pub type sqlite_result<T> = Result<T, ResultCode>;
 
 type RowMap = LinearMap<~str, sqlite_bind_arg>;
 
@@ -188,7 +188,7 @@ impl Database {
       Err(r)
     }
   }
-  fn exec(&self, sql: &str) -> sqlite_result<sqlite_result_code> {
+  fn exec(&self, sql: &str) -> sqlite_result<ResultCode> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
       r = sqlite3::sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
@@ -203,7 +203,7 @@ impl Database {
     sqlite3::sqlite3_last_insert_rowid(self.dbh)
   }
 
-  fn set_busy_timeout(&self, ms: int) -> sqlite_result_code {
+  fn set_busy_timeout(&self, ms: int) -> ResultCode {
     sqlite3::sqlite3_busy_timeout(self.dbh, ms as c_int)
   }
 }
@@ -214,8 +214,8 @@ enum stmt {}
 enum _notused {}
 
 extern mod sqlite3 {
-  fn sqlite3_open(path: *c_char, hnd: **dbh) -> sqlite_result_code;
-  fn sqlite3_close(dbh: *dbh) -> sqlite_result_code;
+  fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
+  fn sqlite3_close(dbh: *dbh) -> ResultCode;
   fn sqlite3_errmsg(dbh: *dbh) -> *c_char;
   fn sqlite3_changes(dbh: *dbh) -> c_int;
   fn sqlite3_last_insert_rowid(dbh: *dbh) -> i64;
@@ -227,14 +227,14 @@ extern mod sqlite3 {
     sql_len: c_int,
     shnd: **stmt,
     tail: **c_char
-  ) -> sqlite_result_code;
+  ) -> ResultCode;
 
-  fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> sqlite_result_code;
+  fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> ResultCode;
 
-  fn sqlite3_step(sth: *stmt) -> sqlite_result_code;
-  fn sqlite3_reset(sth: *stmt) -> sqlite_result_code;
-  fn sqlite3_finalize(sth: *stmt) -> sqlite_result_code;
-  fn sqlite3_clear_bindings(sth: *stmt) -> sqlite_result_code;
+  fn sqlite3_step(sth: *stmt) -> ResultCode;
+  fn sqlite3_reset(sth: *stmt) -> ResultCode;
+  fn sqlite3_finalize(sth: *stmt) -> ResultCode;
+  fn sqlite3_clear_bindings(sth: *stmt) -> ResultCode;
 
   fn sqlite3_column_name(sth: *stmt, icol: c_int) -> *c_char;
   fn sqlite3_column_type(sth: *stmt, icol: c_int) -> c_int;
@@ -246,14 +246,14 @@ extern mod sqlite3 {
   fn sqlite3_column_double(sth: *stmt, icol: c_int) -> float;
   fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
 
-  fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: float) -> sqlite_result_code;
+  fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> ResultCode;
+  fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> ResultCode;
+  fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> ResultCode;
+  fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> ResultCode;
+  fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: float) -> ResultCode;
   fn sqlite3_bind_parameter_index(sth: *stmt, name: *c_char) -> c_int;
 
-  fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> sqlite_result_code;
+  fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> ResultCode;
 
 }
 
@@ -282,20 +282,20 @@ fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
 }
 
 impl Stmt {
-  fn reset(&self) -> sqlite_result_code {
+  fn reset(&self) -> ResultCode {
     sqlite3::sqlite3_reset(self.stmt)
   }
 
-  fn clear_bindings(&self) -> sqlite_result_code {
+  fn clear_bindings(&self) -> ResultCode {
     sqlite3::sqlite3_clear_bindings(self.stmt)
   }
 
-  fn step(&self) -> sqlite_result_code {
+  fn step(&self) -> ResultCode {
     sqlite3::sqlite3_step(self.stmt)
   }
 
   fn step_row(&self) -> sqlite_result<Option<RowMap>> {
-    let is_row: sqlite_result_code = self.step();
+    let is_row: ResultCode = self.step();
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
       let mut i = 0;
@@ -389,7 +389,7 @@ impl Stmt {
     return r;
   }
 
-  fn bind_params(&self, values: &[sqlite_bind_arg]) -> sqlite_result_code {
+  fn bind_params(&self, values: &[sqlite_bind_arg]) -> ResultCode {
     let mut i = 0i;
     for values.each |v| {
       let r = self.bind_param(i, v);
@@ -401,7 +401,7 @@ impl Stmt {
     return SQLITE_OK;
   }
 
-  fn bind_param(&self, i: int, value: &sqlite_bind_arg) -> sqlite_result_code unsafe {
+  fn bind_param(&self, i: int, value: &sqlite_bind_arg) -> ResultCode unsafe {
     let mut r = match *value {
       text(copy v) => {
         let l = str::len(v);
