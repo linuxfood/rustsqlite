@@ -181,14 +181,14 @@ impl Database {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
-  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<sqlite_stmt> {
+  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<Stmt> {
     let new_stmt = ptr::null();
     let mut r = str::as_c_str(sql, |_sql| {
         sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
     });
     if r == SQLITE_OK {
       debug!("created new stmt: %?", new_stmt);
-      Ok(sqlite_stmt { stmt: new_stmt })
+      Ok(Stmt { stmt: new_stmt })
     } else {
       Err(r)
     }
@@ -214,7 +214,7 @@ impl Database {
 }
 
 enum dbh {}
-enum _stmt {}
+enum stmt {}
 
 enum _notused {}
 
@@ -230,40 +230,40 @@ extern mod sqlite3 {
     hnd: *dbh,
     sql: *c_char,
     sql_len: c_int,
-    shnd: **_stmt,
+    shnd: **stmt,
     tail: **c_char
   ) -> sqlite_result_code;
 
   fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> sqlite_result_code;
 
-  fn sqlite3_step(sth: *_stmt) -> sqlite_result_code;
-  fn sqlite3_reset(sth: *_stmt) -> sqlite_result_code;
-  fn sqlite3_finalize(sth: *_stmt) -> sqlite_result_code;
-  fn sqlite3_clear_bindings(sth: *_stmt) -> sqlite_result_code;
+  fn sqlite3_step(sth: *stmt) -> sqlite_result_code;
+  fn sqlite3_reset(sth: *stmt) -> sqlite_result_code;
+  fn sqlite3_finalize(sth: *stmt) -> sqlite_result_code;
+  fn sqlite3_clear_bindings(sth: *stmt) -> sqlite_result_code;
 
-  fn sqlite3_column_name(sth: *_stmt, icol: c_int) -> *c_char;
-  fn sqlite3_column_type(sth: *_stmt, icol: c_int) -> c_int;
-  fn sqlite3_data_count(sth: *_stmt) -> c_int;
-  fn sqlite3_column_bytes(sth: *_stmt, icol: c_int) -> c_int;
-  fn sqlite3_column_blob(sth: *_stmt, icol: c_int) -> *u8;
+  fn sqlite3_column_name(sth: *stmt, icol: c_int) -> *c_char;
+  fn sqlite3_column_type(sth: *stmt, icol: c_int) -> c_int;
+  fn sqlite3_data_count(sth: *stmt) -> c_int;
+  fn sqlite3_column_bytes(sth: *stmt, icol: c_int) -> c_int;
+  fn sqlite3_column_blob(sth: *stmt, icol: c_int) -> *u8;
 
-  fn sqlite3_column_text(sth: *_stmt, icol: c_int) -> *c_char;
-  fn sqlite3_column_double(sth: *_stmt, icol: c_int) -> float;
-  fn sqlite3_column_int(sth: *_stmt, icol: c_int) -> c_int;
+  fn sqlite3_column_text(sth: *stmt, icol: c_int) -> *c_char;
+  fn sqlite3_column_double(sth: *stmt, icol: c_int) -> float;
+  fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
 
-  fn sqlite3_bind_blob(sth: *_stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_text(sth: *_stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_null(sth: *_stmt, icol: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_int(sth: *_stmt, icol: c_int, v: c_int) -> sqlite_result_code;
-  fn sqlite3_bind_double(sth: *_stmt, icol: c_int, value: float) -> sqlite_result_code;
-  fn sqlite3_bind_parameter_index(sth: *_stmt, name: *c_char) -> c_int;
+  fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> sqlite_result_code;
+  fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: float) -> sqlite_result_code;
+  fn sqlite3_bind_parameter_index(sth: *stmt, name: *c_char) -> c_int;
 
   fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> sqlite_result_code;
 
 }
 
-struct sqlite_stmt {
-  priv stmt: *_stmt,
+struct Stmt {
+  priv stmt: *stmt,
 
   drop {
     log(debug, (~"freeing stmt resource: ", self.stmt));
@@ -286,7 +286,7 @@ fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
   }
 }
 
-impl sqlite_stmt {
+impl Stmt {
   fn reset(&self) -> sqlite_result_code {
     sqlite3::sqlite3_reset(self.stmt)
   }
@@ -452,7 +452,7 @@ pub fn open(path: &str) -> sqlite_result<Database> {
 #[cfg(test)]
 mod tests {
 
-  fn checked_prepare(database: Database, sql: &str) -> sqlite_stmt {
+  fn checked_prepare(database: Database, sql: &str) -> Stmt {
     match database.prepare(sql, &None) {
       Ok(move s)  => { s }
       Err(x) => { fail fmt!("sqlite error: \"%s\" (%?)", database.get_errmsg(), x); }
