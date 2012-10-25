@@ -108,46 +108,46 @@ impl ResultCode : cmp::Eq {
    pure fn ne(other: &ResultCode) -> bool { !self.eq(other) }
 }
 
-pub enum sqlite_bind_arg {
-  text(~str),
-  number(float),
-  integer(int),
-  blob(~[u8]),
-  null(),
+pub enum BindArg {
+  Text(~str),
+  Number(float),
+  Integer(int),
+  Blob(~[u8]),
+  Null(),
 }
 
-impl sqlite_bind_arg : cmp::Eq {
-  pure fn eq(other: &sqlite_bind_arg) -> bool {
+impl BindArg : cmp::Eq {
+  pure fn eq(other: &BindArg) -> bool {
     match self {
-      text(copy ss) =>
+      Text(copy ss) =>
         match *other {
-          text(copy sss) => ss == sss,
+          Text(copy sss) => ss == sss,
           _        => false
          },
-      number(copy ff) =>
+      Number(copy ff) =>
         match *other {
-          number(copy fff) => ff == fff,
+          Number(copy fff) => ff == fff,
           _          => false
         },
-      integer(copy ii) =>
+      Integer(copy ii) =>
         match *other {
-          integer(copy iii) => ii == iii,
+          Integer(copy iii) => ii == iii,
            _           => false
         },
-      blob(copy bb) =>
+      Blob(copy bb) =>
         match *other {
-          blob(copy bbb) => bb == bbb,
+          Blob(copy bbb) => bb == bbb,
           _        => false
         },
-      null() =>
+      Null() =>
         match *other {
-          null() => true,
+          Null() => true,
           _     => false
         },
     }
   }
 
-  pure fn ne(other: &sqlite_bind_arg) -> bool { !self.eq(other) }
+  pure fn ne(other: &BindArg) -> bool { !self.eq(other) }
 }
 
 pub enum ColumnType {
@@ -160,7 +160,7 @@ pub enum ColumnType {
 
 pub type sqlite_result<T> = Result<T, ResultCode>;
 
-type RowMap = LinearMap<~str, sqlite_bind_arg>;
+type RowMap = LinearMap<~str, BindArg>;
 
 pub struct Database {
   priv dbh: *dbh,
@@ -304,11 +304,11 @@ impl Stmt {
         let name = self.get_column_name(i);
         let coltype = self.get_column_type(i);
         let res = match coltype {
-          SQLITE_INTEGER => sqlrow.insert(name, integer(self.get_int(i))),
-          SQLITE_FLOAT   => sqlrow.insert(name, number(self.get_num(i))),
-          SQLITE_TEXT    => sqlrow.insert(name, text(self.get_text(i))),
-          SQLITE_BLOB    => sqlrow.insert(name, blob(self.get_blob(i))),
-          SQLITE_NULL    => sqlrow.insert(name, null),
+          SQLITE_INTEGER => sqlrow.insert(name, Integer(self.get_int(i))),
+          SQLITE_FLOAT   => sqlrow.insert(name, Number(self.get_num(i))),
+          SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i))),
+          SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i))),
+          SQLITE_NULL    => sqlrow.insert(name, Null),
         };
         if res == false {
           fail ~"Couldn't insert a value into the map for sqlrow!";
@@ -389,7 +389,7 @@ impl Stmt {
     return r;
   }
 
-  fn bind_params(&self, values: &[sqlite_bind_arg]) -> ResultCode {
+  fn bind_params(&self, values: &[BindArg]) -> ResultCode {
     let mut i = 0i;
     for values.each |v| {
       let r = self.bind_param(i, v);
@@ -401,9 +401,9 @@ impl Stmt {
     return SQLITE_OK;
   }
 
-  fn bind_param(&self, i: int, value: &sqlite_bind_arg) -> ResultCode unsafe {
+  fn bind_param(&self, i: int, value: &BindArg) -> ResultCode unsafe {
     let mut r = match *value {
-      text(copy v) => {
+      Text(copy v) => {
         let l = str::len(v);
         str::as_c_str(v, |_v| {
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
@@ -412,18 +412,18 @@ impl Stmt {
         })
       }
 
-      blob(copy v) => {
+      Blob(copy v) => {
         let l = vec::len(v);
         // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
         //        of copying when binding text or blob values.
         sqlite3::sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
       }
 
-      integer(copy v) => { sqlite3::sqlite3_bind_int(self.stmt, i as c_int, v as c_int) }
+      Integer(copy v) => { sqlite3::sqlite3_bind_int(self.stmt, i as c_int, v as c_int) }
 
-      number(copy v) => { sqlite3::sqlite3_bind_double(self.stmt, i as c_int, v) }
+      Number(copy v) => { sqlite3::sqlite3_bind_double(self.stmt, i as c_int, v) }
 
-      null => { sqlite3::sqlite3_bind_null(self.stmt, i as c_int) }
+      Null => { sqlite3::sqlite3_bind_null(self.stmt, i as c_int) }
 
     };
 
@@ -516,8 +516,8 @@ mod tests {
         INSERT OR IGNORE INTO test (id) VALUES(4);"
     );
     let sth = checked_prepare(database, "SELECT id FROM test WHERE id > ? AND id < ?");
-    assert sth.bind_param(1, &integer(2)) == SQLITE_OK;
-    assert sth.bind_param(2, &integer(4)) == SQLITE_OK;
+    assert sth.bind_param(1, &Integer(2)) == SQLITE_OK;
+    assert sth.bind_param(2, &Integer(4)) == SQLITE_OK;
 
     assert sth.step() == SQLITE_ROW;
     assert sth.get_num(0) as int == 3;
@@ -600,9 +600,9 @@ mod tests {
     match move possible_row {
       Some(move x) => {
         let mut x = x;
-        assert x.pop(&~"id") == Some(integer(2));
-        assert x.pop(&~"k")  == Some(text(~"e"));
-        assert x.pop(&~"v")  == Some(number(2.17));
+        assert x.pop(&~"id") == Some(Integer(2));
+        assert x.pop(&~"k")  == Some(Text(~"e"));
+        assert x.pop(&~"v")  == Some(Number(2.17));
       }
       None => {
         fail(~"didnt get even one row back.");
