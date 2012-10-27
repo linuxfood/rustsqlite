@@ -158,7 +158,7 @@ pub enum ColumnType {
   SQLITE_NULL,
 }
 
-pub type sqlite_result<T> = Result<T, ResultCode>;
+pub type SqliteResult<T> = Result<T, ResultCode>;
 
 type RowMap = LinearMap<~str, BindArg>;
 
@@ -176,7 +176,7 @@ impl Database {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
-  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<Cursor> {
+  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
     let mut r = str::as_c_str(sql, |_sql| {
         sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
@@ -188,7 +188,7 @@ impl Database {
       Err(r)
     }
   }
-  fn exec(&self, sql: &str) -> sqlite_result<ResultCode> {
+  fn exec(&self, sql: &str) -> SqliteResult<ResultCode> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
       r = sqlite3::sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
@@ -266,7 +266,7 @@ struct Cursor {
   }
 }
 
-fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
+fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = str::as_c_str(sql, { |_sql|
     sqlite3::sqlite3_complete(_sql)
   }) as int;
@@ -294,7 +294,7 @@ impl Cursor {
     sqlite3::sqlite3_step(self.stmt)
   }
 
-  fn step_row(&self) -> sqlite_result<Option<RowMap>> {
+  fn step_row(&self) -> SqliteResult<Option<RowMap>> {
     let is_row: ResultCode = self.step();
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
@@ -431,7 +431,7 @@ impl Cursor {
   }
 }
 
-pub fn open(path: &str) -> sqlite_result<Database> {
+pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
     sqlite3::sqlite3_open(_path, ptr::addr_of(&dbh))
@@ -617,7 +617,7 @@ mod tests {
     assert is_ok_and(r1, false);
     assert is_ok_and(r2, true);
 
-    fn is_ok_and(r: sqlite_result<bool>, v: bool) -> bool {
+    fn is_ok_and(r: SqliteResult<bool>, v: bool) -> bool {
       assert r.is_ok();
       return r.get() == v;
     }
