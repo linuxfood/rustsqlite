@@ -176,14 +176,14 @@ impl Database {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
-  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<Stmt> {
+  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> sqlite_result<Cursor> {
     let new_stmt = ptr::null();
     let mut r = str::as_c_str(sql, |_sql| {
         sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
     });
     if r == SQLITE_OK {
       debug!("created new stmt: %?", new_stmt);
-      Ok(Stmt { stmt: new_stmt })
+      Ok(Cursor { stmt: new_stmt })
     } else {
       Err(r)
     }
@@ -257,7 +257,7 @@ extern mod sqlite3 {
 
 }
 
-struct Stmt {
+struct Cursor {
   priv stmt: *stmt,
 
   drop {
@@ -281,7 +281,7 @@ fn sqlite_complete(sql: &str) -> sqlite_result<bool> {
   }
 }
 
-impl Stmt {
+impl Cursor {
   fn reset(&self) -> ResultCode {
     sqlite3::sqlite3_reset(self.stmt)
   }
@@ -447,7 +447,7 @@ pub fn open(path: &str) -> sqlite_result<Database> {
 #[cfg(test)]
 mod tests {
 
-  fn checked_prepare(database: Database, sql: &str) -> Stmt {
+  fn checked_prepare(database: Database, sql: &str) -> Cursor {
     match database.prepare(sql, &None) {
       Ok(move s)  => { s }
       Err(x) => { fail fmt!("sqlite error: \"%s\" (%?)", database.get_errmsg(), x); }
