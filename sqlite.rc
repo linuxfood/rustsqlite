@@ -39,8 +39,8 @@
 #[forbid(deprecated_mode)];
 
 extern mod std;
-use libc::*;
-use send_map::linear::LinearMap;
+use core::libc::*;
+use core::hashmap::linear::LinearMap;
 
 #[deriving_eq]
 pub enum ResultCode {
@@ -142,7 +142,7 @@ pub struct Database {
 }
 
 impl Database {
-  fn get_errmsg(&self) -> ~str unsafe {
+  unsafe fn get_errmsg(&self) -> ~str {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
@@ -269,7 +269,7 @@ impl Cursor {
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
       let mut i = 0;
-      let mut sqlrow = LinearMap();
+      let mut sqlrow = LinearMap::new();
       while( i < column_cnt ) {
         let name = self.get_column_name(i);
         let coltype = self.get_column_type(i);
@@ -299,7 +299,7 @@ impl Cursor {
     sqlite3::sqlite3_column_bytes(self.stmt, i as c_int) as int
   }
 
-  fn get_blob(&self, i: int) -> ~[u8] unsafe {
+  unsafe fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
     let mut bytes = vec::raw::from_buf_raw(
       sqlite3::sqlite3_column_blob(self.stmt, i as c_int),
@@ -316,7 +316,7 @@ impl Cursor {
     return sqlite3::sqlite3_column_double(self.stmt, i as c_int);
   }
 
-  fn get_text(&self, i: int) -> ~str unsafe {
+  unsafe fn get_text(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_text(self.stmt, i as c_int) );
   }
 
@@ -331,7 +331,7 @@ impl Cursor {
     return sqlite3::sqlite3_data_count(self.stmt) as int;
   }
 
-  fn get_column_name(&self, i: int) -> ~str unsafe {
+  unsafe fn get_column_name(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_name(self.stmt, i as c_int) );
   }
 
@@ -371,7 +371,7 @@ impl Cursor {
     return SQLITE_OK;
   }
 
-  fn bind_param(&self, i: int, value: &BindArg) -> ResultCode unsafe {
+  unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let mut r = match *value {
       Text(copy v) => {
         let l = str::len(v);
