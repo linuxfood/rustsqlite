@@ -39,8 +39,8 @@
 #[forbid(deprecated_mode)];
 
 extern mod std;
-use libc::*;
-use send_map::linear::LinearMap;
+use core::libc::*;
+use core::hashmap::linear::LinearMap;
 
 #[deriving_eq]
 pub enum ResultCode {
@@ -137,19 +137,23 @@ pub struct Database {
 
   drop {
     debug!("freeing dbh resource: %?", self.dbh);
-    sqlite3::sqlite3_close(self.dbh);
+    unsafe {
+      sqlite3::sqlite3_close(self.dbh);
+    }
   }
 }
 
 impl Database {
-  fn get_errmsg(&self) -> ~str unsafe {
+  unsafe fn get_errmsg(&self) -> ~str {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
   fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
     let mut r = str::as_c_str(sql, |_sql| {
+      unsafe {
         sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
+      }
     });
     if r == SQLITE_OK {
       debug!("created new stmt: %?", new_stmt);
@@ -161,20 +165,28 @@ impl Database {
   fn exec(&self, sql: &str) -> SqliteResult<ResultCode> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
-      r = sqlite3::sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
+      unsafe {
+        r = sqlite3::sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
+      }
     });
 
     if r == SQLITE_OK { Ok(r) } else { Err(r) }
   }
   fn get_changes(&self) -> int {
-    sqlite3::sqlite3_changes(self.dbh) as int
+    unsafe {
+      sqlite3::sqlite3_changes(self.dbh) as int
+    }
   }
   fn get_last_insert_rowid(&self) -> i64 {
-    sqlite3::sqlite3_last_insert_rowid(self.dbh)
+    unsafe {
+      sqlite3::sqlite3_last_insert_rowid(self.dbh)
+    }
   }
 
   fn set_busy_timeout(&self, ms: int) -> ResultCode {
-    sqlite3::sqlite3_busy_timeout(self.dbh, ms as c_int)
+    unsafe {
+      sqlite3::sqlite3_busy_timeout(self.dbh, ms as c_int)
+    }
   }
 }
 
@@ -232,13 +244,17 @@ struct Cursor {
 
   drop {
     log(debug, (~"freeing stmt resource: ", self.stmt));
-    sqlite3::sqlite3_finalize(self.stmt);
+    unsafe {
+      sqlite3::sqlite3_finalize(self.stmt);
+    }
   }
 }
 
 fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = str::as_c_str(sql, { |_sql|
-    sqlite3::sqlite3_complete(_sql)
+    unsafe {
+      sqlite3::sqlite3_complete(_sql)
+    }
   }) as int;
   if r == SQLITE_NOMEM as int {
     return Err(SQLITE_NOMEM);
@@ -253,15 +269,21 @@ fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 
 impl Cursor {
   fn reset(&self) -> ResultCode {
-    sqlite3::sqlite3_reset(self.stmt)
+    unsafe {
+      sqlite3::sqlite3_reset(self.stmt)
+    }
   }
 
   fn clear_bindings(&self) -> ResultCode {
-    sqlite3::sqlite3_clear_bindings(self.stmt)
+    unsafe {
+      sqlite3::sqlite3_clear_bindings(self.stmt)
+    }
   }
 
   fn step(&self) -> ResultCode {
-    sqlite3::sqlite3_step(self.stmt)
+    unsafe {
+      sqlite3::sqlite3_step(self.stmt)
+    }
   }
 
   fn step_row(&self) -> SqliteResult<Option<RowMap>> {
@@ -269,7 +291,7 @@ impl Cursor {
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
       let mut i = 0;
-      let mut sqlrow = LinearMap();
+      let mut sqlrow = LinearMap::new();
       while( i < column_cnt ) {
         let name = self.get_column_name(i);
         let coltype = self.get_column_type(i);
@@ -296,10 +318,12 @@ impl Cursor {
   }
 
   fn get_bytes(&self, i: int) -> int {
-    sqlite3::sqlite3_column_bytes(self.stmt, i as c_int) as int
+    unsafe {
+      sqlite3::sqlite3_column_bytes(self.stmt, i as c_int) as int
+    }
   }
 
-  fn get_blob(&self, i: int) -> ~[u8] unsafe {
+  unsafe fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
     let mut bytes = vec::raw::from_buf_raw(
       sqlite3::sqlite3_column_blob(self.stmt, i as c_int),
@@ -309,34 +333,45 @@ impl Cursor {
   }
 
   fn get_int(&self, i: int) -> int {
-    return sqlite3::sqlite3_column_int(self.stmt, i as c_int) as int;
+    unsafe {
+      return sqlite3::sqlite3_column_int(self.stmt, i as c_int) as int;
+    }
   }
 
   fn get_num(&self, i: int) -> float {
-    return sqlite3::sqlite3_column_double(self.stmt, i as c_int);
+    unsafe {
+      return sqlite3::sqlite3_column_double(self.stmt, i as c_int);
+    }
   }
 
-  fn get_text(&self, i: int) -> ~str unsafe {
+  unsafe fn get_text(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_text(self.stmt, i as c_int) );
   }
 
   fn get_bind_index(&self, name: &str) -> int {
     let stmt = self.stmt;
     do str::as_c_str(name) |namebuf| {
-      sqlite3::sqlite3_bind_parameter_index(stmt, namebuf) as int
+      unsafe {
+        sqlite3::sqlite3_bind_parameter_index(stmt, namebuf) as int
+      }
     }
   }
 
   fn get_column_count(&self) -> int {
-    return sqlite3::sqlite3_data_count(self.stmt) as int;
+    unsafe {
+      return sqlite3::sqlite3_data_count(self.stmt) as int;
+    }
   }
 
-  fn get_column_name(&self, i: int) -> ~str unsafe {
+  unsafe fn get_column_name(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_name(self.stmt, i as c_int) );
   }
 
   fn get_column_type(&self, i: int) -> ColumnType {
-    let ct = sqlite3::sqlite3_column_type(self.stmt, i as c_int) as int;
+    let ct;
+    unsafe {
+      ct = sqlite3::sqlite3_column_type(self.stmt, i as c_int) as int;
+    }
     let mut res = match ct {
       1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
       2 /* SQLITE_FLOAT   */ => SQLITE_FLOAT,
@@ -371,7 +406,7 @@ impl Cursor {
     return SQLITE_OK;
   }
 
-  fn bind_param(&self, i: int, value: &BindArg) -> ResultCode unsafe {
+  unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let mut r = match *value {
       Text(copy v) => {
         let l = str::len(v);
@@ -404,7 +439,9 @@ impl Cursor {
 pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
-    sqlite3::sqlite3_open(_path, ptr::addr_of(&dbh))
+    unsafe {
+      sqlite3::sqlite3_open(_path, ptr::addr_of(&dbh))
+    }
   });
   if r != SQLITE_OK {
     Err(r)
