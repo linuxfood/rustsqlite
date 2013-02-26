@@ -75,9 +75,9 @@ pub enum ResultCode {
   SQLITE_DONE       = 101,
 }
 
-impl ResultCode: to_str::ToStr {
-  pure fn to_str() -> ~str {
-    match self {
+impl to_str::ToStr for ResultCode {
+  pure fn to_str(&self) -> ~str {
+    match *self {
       SQLITE_OK => ~"Ok",
       SQLITE_ERROR => ~"SQLITE_ERROR",
       SQLITE_INTERNAL => ~"SQLITE_INTERNAL",
@@ -303,7 +303,7 @@ impl Cursor {
           SQLITE_NULL    => sqlrow.insert(name, Null),
         };
         if res == false {
-          fail ~"Couldn't insert a value into the map for sqlrow!";
+          fail!(~"Couldn't insert a value into the map for sqlrow!");
         }
         i += 1;
       }
@@ -378,7 +378,7 @@ impl Cursor {
       3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
       4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
       5 /* SQLITE_NULL    */ => SQLITE_NULL,
-      _ => fail fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct),
+      _ => fail!(fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct)),
     };
     return res;
   }
@@ -453,18 +453,19 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 
 #[cfg(test)]
 mod tests {
+  use super::*;
 
   fn checked_prepare(database: Database, sql: &str) -> Cursor {
     match database.prepare(sql, &None) {
-      Ok(move s)  => { s }
-      Err(x) => { fail fmt!("sqlite error: \"%s\" (%?)", database.get_errmsg(), x); }
+      Ok(s)  => s,
+      Err(x) => fail!(fmt!("sqlite error: \"%s\" (%?)", database.get_errmsg(), x)),
     }
   }
 
   fn checked_open() -> Database {
     match open(":memory:") {
-      Ok(move database) => database,
-      Err(e) => fail e.to_str(),
+      Ok(database) => database,
+      Err(ref e) => fail!(e.to_str()),
     }
   }
 
@@ -604,15 +605,15 @@ mod tests {
     let sth = checked_prepare(database, "SELECT * FROM test WHERE id=2");
     let r = sth.step_row();
     let possible_row = result::unwrap(r);
-    match move possible_row {
-      Some(move x) => {
+    match possible_row {
+      Some(x) => {
         let mut x = x;
         assert x.pop(&~"id") == Some(Integer(2));
         assert x.pop(&~"k")  == Some(Text(~"e"));
         assert x.pop(&~"v")  == Some(Number(2.17));
       }
       None => {
-        fail(~"didnt get even one row back.");
+        fail!(~"didnt get even one row back.");
       }
     }
   }
