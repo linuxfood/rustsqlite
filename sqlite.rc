@@ -471,7 +471,7 @@ mod tests {
 
   fn checked_exec(database: &Database, sql: &str) {
     let r = database.exec(sql);
-    assert r.is_ok();
+    fail_unless!(r.is_ok());
   }
 
   #[test]
@@ -507,9 +507,9 @@ mod tests {
     );
 
     let sth = checked_prepare(database, "SELECT id FROM test WHERE id = 1;");
-    assert sth.step() == SQLITE_ROW;
-    assert sth.get_int(0) == 1;
-    assert sth.step() == SQLITE_DONE;
+    fail_unless!(sth.step() == SQLITE_ROW);
+    fail_unless!(sth.get_int(0) == 1);
+    fail_unless!(sth.step() == SQLITE_DONE);
   }
 
   #[test]
@@ -524,11 +524,11 @@ mod tests {
         INSERT OR IGNORE INTO test (id) VALUES(4);"
     );
     let sth = checked_prepare(database, "SELECT id FROM test WHERE id > ? AND id < ?");
-    assert sth.bind_param(1, &Integer(2)) == SQLITE_OK;
-    assert sth.bind_param(2, &Integer(4)) == SQLITE_OK;
+    fail_unless!(sth.bind_param(1, &Integer(2)) == SQLITE_OK);
+    fail_unless!(sth.bind_param(2, &Integer(4)) == SQLITE_OK);
 
-    assert sth.step() == SQLITE_ROW;
-    assert sth.get_num(0) as int == 3;
+    fail_unless!(sth.step() == SQLITE_ROW);
+    fail_unless!(sth.get_num(0) as int == 3);
   }
 
   #[test]
@@ -542,8 +542,8 @@ mod tests {
         COMMIT;"
     );
     let sth = checked_prepare(database, "SELECT * FROM test");
-    assert sth.step() == SQLITE_ROW;
-    assert sth.get_column_names() == ~[~"id", ~"v"];
+    fail_unless!(sth.step() == SQLITE_ROW);
+    fail_unless!(sth.get_column_names() == ~[~"id", ~"v"]);
   }
 
   #[test]
@@ -571,7 +571,7 @@ mod tests {
         COMMIT;"
     );
     let sth = checked_prepare(database, "SELECT * FROM test WHERE v=:Name");
-    assert sth.get_bind_index(":Name") == 1;
+    fail_unless!(sth.get_bind_index(":Name") == 1);
   }
 
   #[test]
@@ -586,7 +586,7 @@ mod tests {
       "
     );
     debug!("last insert_id: %s", u64::str(database.get_last_insert_rowid() as u64));
-    assert database.get_last_insert_rowid() == 1_i64;
+    fail_unless!(database.get_last_insert_rowid() == 1_i64);
   }
 
   #[test]
@@ -608,9 +608,9 @@ mod tests {
     match possible_row {
       Some(x) => {
         let mut x = x;
-        assert x.pop(&~"id") == Some(Integer(2));
-        assert x.pop(&~"k")  == Some(Text(~"e"));
-        assert x.pop(&~"v")  == Some(Number(2.17));
+        fail_unless!(x.pop(&~"id") == Some(Integer(2)));
+        fail_unless!(x.pop(&~"k")  == Some(Text(~"e")));
+        fail_unless!(x.pop(&~"v")  == Some(Number(2.17)));
       }
       None => {
         fail!(~"didnt get even one row back.");
@@ -622,11 +622,11 @@ mod tests {
   fn check_complete_sql() {
     let r1 = sqlite_complete("SELECT * FROM");
     let r2 = sqlite_complete("SELECT * FROM bob;");
-    assert is_ok_and(r1, false);
-    assert is_ok_and(r2, true);
+    fail_unless!(is_ok_and(r1, false));
+    fail_unless!(is_ok_and(r2, true));
 
     fn is_ok_and(r: SqliteResult<bool>, v: bool) -> bool {
-      assert r.is_ok();
+      fail_unless!(r.is_ok());
       return r.get() == v;
     }
   }
