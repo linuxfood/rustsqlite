@@ -239,7 +239,7 @@ extern mod sqlite3 {
 
 }
 
-struct Cursor {
+pub struct Cursor {
   priv stmt: *stmt,
 
   drop {
@@ -250,7 +250,7 @@ struct Cursor {
   }
 }
 
-fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
+pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = str::as_c_str(sql, { |_sql|
     unsafe {
       sqlite3::sqlite3_complete(_sql)
