@@ -143,7 +143,7 @@ pub struct Database {
   }
 }
 
-impl Database {
+pub impl Database {
   unsafe fn get_errmsg(&self) -> ~str {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
