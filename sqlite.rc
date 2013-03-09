@@ -585,7 +585,7 @@ mod tests {
       COMMIT;
       "
     );
-    debug!("last insert_id: %s", u64::str(database.get_last_insert_rowid() as u64));
+    debug!("last insert_id: %s", u64::to_str(database.get_last_insert_rowid() as u64));
     fail_unless!(database.get_last_insert_rowid() == 1_i64);
   }
 
