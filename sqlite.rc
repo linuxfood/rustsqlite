@@ -134,8 +134,10 @@ type RowMap = LinearMap<~str, BindArg>;
 
 pub struct Database {
   priv dbh: *dbh,
+}
 
-  drop {
+impl Drop for Database {
+  fn finalize(&self) {
     debug!("freeing dbh resource: %?", self.dbh);
     unsafe {
       sqlite3::sqlite3_close(self.dbh);
@@ -241,8 +243,10 @@ extern mod sqlite3 {
 
 pub struct Cursor {
   priv stmt: *stmt,
+}
 
-  drop {
+impl Drop for Cursor {
+  fn finalize(&self) {
     log(debug, (~"freeing stmt resource: ", self.stmt));
     unsafe {
       sqlite3::sqlite3_finalize(self.stmt);
