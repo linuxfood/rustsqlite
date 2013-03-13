@@ -247,7 +247,7 @@ pub struct Cursor {
 
 impl Drop for Cursor {
   fn finalize(&self) {
-    log(debug, (~"freeing stmt resource: ", self.stmt));
+    debug!("freeing stmt resource: %?", self.stmt);
     unsafe {
       sqlite3::sqlite3_finalize(self.stmt);
     }
