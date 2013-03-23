@@ -42,7 +42,7 @@ extern mod std;
 use core::libc::*;
 use core::hashmap::linear::LinearMap;
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum ResultCode {
   SQLITE_OK         =  0,
   SQLITE_ERROR      =  1,
@@ -76,7 +76,7 @@ pub enum ResultCode {
 }
 
 impl to_str::ToStr for ResultCode {
-  pure fn to_str(&self) -> ~str {
+  fn to_str(&self) -> ~str {
     match *self {
       SQLITE_OK => ~"Ok",
       SQLITE_ERROR => ~"SQLITE_ERROR",
@@ -111,7 +111,7 @@ impl to_str::ToStr for ResultCode {
   }
 }
 
-#[deriving_eq]
+#[deriving(Eq)]
 pub enum BindArg {
   Text(~str),
   Number(float),
