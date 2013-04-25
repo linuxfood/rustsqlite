@@ -152,7 +152,7 @@ pub impl Database {
 
   fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
-    let mut r = str::as_c_str(sql, |_sql| {
+    let r = str::as_c_str(sql, |_sql| {
       unsafe {
         sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
       }
@@ -329,7 +329,7 @@ impl Cursor {
 
   unsafe fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
-    let mut bytes = vec::raw::from_buf_raw(
+    let bytes = vec::raw::from_buf_raw(
       sqlite3::sqlite3_column_blob(self.stmt, i as c_int),
       len as uint
     );
@@ -376,7 +376,7 @@ impl Cursor {
     unsafe {
       ct = sqlite3::sqlite3_column_type(self.stmt, i as c_int) as int;
     }
-    let mut res = match ct {
+    let res = match ct {
       1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
       2 /* SQLITE_FLOAT   */ => SQLITE_FLOAT,
       3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
@@ -411,7 +411,7 @@ impl Cursor {
   }
 
   unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
-    let mut r = match *value {
+    let r = match *value {
       Text(copy v) => {
         let l = str::len(v);
         str::as_c_str(v, |_v| {
