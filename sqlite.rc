@@ -40,7 +40,7 @@
 
 extern mod std;
 use core::libc::*;
-use core::hashmap::linear::LinearMap;
+use core::hashmap::HashMap;
 
 #[deriving(Eq)]
 pub enum ResultCode {
@@ -130,7 +130,7 @@ pub enum ColumnType {
 
 pub type SqliteResult<T> = Result<T, ResultCode>;
 
-type RowMap = LinearMap<~str, BindArg>;
+type RowMap = HashMap<~str, BindArg>;
 
 pub struct Database {
   priv dbh: *dbh,
@@ -295,7 +295,7 @@ impl Cursor {
     if is_row == SQLITE_ROW {
       let column_cnt = self.get_column_count();
       let mut i = 0;
-      let mut sqlrow = LinearMap::new();
+      let mut sqlrow = HashMap::new();
       while( i < column_cnt ) {
         let name = self.get_column_name(i);
         let coltype = self.get_column_type(i);
