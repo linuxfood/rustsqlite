@@ -271,7 +271,7 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   }
 }
 
-impl Cursor {
+pub impl Cursor {
   fn reset(&self) -> ResultCode {
     unsafe {
       sqlite3::sqlite3_reset(self.stmt)
