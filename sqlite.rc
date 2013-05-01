@@ -36,7 +36,6 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 #[forbid(deprecated_pattern)];
-#[forbid(deprecated_mode)];
 
 extern mod std;
 use core::libc::*;
@@ -154,7 +153,7 @@ pub impl Database {
     let new_stmt = ptr::null();
     let r = str::as_c_str(sql, |_sql| {
       unsafe {
-        sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, ptr::addr_of(&new_stmt), ptr::null())
+        sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, &new_stmt, ptr::null())
       }
     });
     if r == SQLITE_OK {
@@ -444,7 +443,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
     unsafe {
-      sqlite3::sqlite3_open(_path, ptr::addr_of(&dbh))
+      sqlite3::sqlite3_open(_path, &dbh)
     }
   });
   if r != SQLITE_OK {
