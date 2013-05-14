@@ -191,14 +191,17 @@ pub impl Database {
   }
 }
 
-enum dbh {}
-enum stmt {}
+pub enum dbh {}
+pub enum stmt {}
 
-enum _notused {}
+pub enum _notused {}
 
 mod sqlite3 {
+  use core::libc::*;
   use super::*;
-  extern {
+
+  #[link_args="-lsqlite3"]
+  pub extern {
     fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
     fn sqlite3_close(dbh: *dbh) -> ResultCode;
     fn sqlite3_errmsg(dbh: *dbh) -> *c_char;
