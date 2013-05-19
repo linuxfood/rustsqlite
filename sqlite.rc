@@ -131,11 +131,14 @@ pub type SqliteResult<T> = Result<T, ResultCode>;
 
 type RowMap = HashMap<~str, BindArg>;
 
+/// The database connection.
 pub struct Database {
   priv dbh: *dbh,
 }
 
 impl Drop for Database {
+  /// Closes the database connection.
+  /// See http://www.sqlite.org/c3ref/close.html
   fn finalize(&self) {
     debug!("freeing dbh resource: %?", self.dbh);
     unsafe {
@@ -145,10 +148,15 @@ impl Drop for Database {
 }
 
 pub impl Database {
+
+  /// Returns the error message of the the most recent call.
+  /// See http://www.sqlite.org/c3ref/errcode.html
   unsafe fn get_errmsg(&self) -> ~str {
     str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
   }
 
+  /// Prepares/compiles an SQL statement.
+  /// See http://www.sqlite.org/c3ref/prepare.html
   fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
     let r = str::as_c_str(sql, |_sql| {
@@ -163,6 +171,9 @@ pub impl Database {
       Err(r)
     }
   }
+
+  /// Executes an SQL statement.
+  /// See http://www.sqlite.org/c3ref/exec.html
   fn exec(&self, sql: &str) -> SqliteResult<ResultCode> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
@@ -173,17 +184,26 @@ pub impl Database {
 
     if r == SQLITE_OK { Ok(r) } else { Err(r) }
   }
+
+  /// Returns the number of modified/inserted/deleted rows by the most recent
+  /// call.
+  /// See http://www.sqlite.org/c3ref/changes.html
   fn get_changes(&self) -> int {
     unsafe {
       sqlite3::sqlite3_changes(self.dbh) as int
     }
   }
+
+  /// Returns the ID of the last inserted row.
+  /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
   fn get_last_insert_rowid(&self) -> i64 {
     unsafe {
       sqlite3::sqlite3_last_insert_rowid(self.dbh)
     }
   }
 
+  /// Sets a busy timeout.
+  /// See http://www.sqlite.org/c3ref/busy_timeout.html
   fn set_busy_timeout(&self, ms: int) -> ResultCode {
     unsafe {
       sqlite3::sqlite3_busy_timeout(self.dbh, ms as c_int)
@@ -245,11 +265,14 @@ mod sqlite3 {
   }
 }
 
+/// The database cursor.
 pub struct Cursor {
   priv stmt: *stmt,
 }
 
 impl Drop for Cursor {
+  /// Deletes a prapred SQL statement.
+  /// See http://www.sqlite.org/c3ref/finalize.html
   fn finalize(&self) {
     debug!("freeing stmt resource: %?", self.stmt);
     unsafe {
@@ -258,6 +281,8 @@ impl Drop for Cursor {
   }
 }
 
+/// Determines whether an SQL statement is complete.
+/// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = str::as_c_str(sql, { |_sql|
     unsafe {
@@ -276,24 +301,32 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 }
 
 pub impl Cursor {
+  /// Resets a prepared SQL statement, but does not reset its bindings.
+  /// See http://www.sqlite.org/c3ref/reset.html
   fn reset(&self) -> ResultCode {
     unsafe {
       sqlite3::sqlite3_reset(self.stmt)
     }
   }
 
+  /// Resets all bindings on a prepared SQL statement.
+  /// See http://www.sqlite.org/c3ref/clear_bindings.html
   fn clear_bindings(&self) -> ResultCode {
     unsafe {
       sqlite3::sqlite3_clear_bindings(self.stmt)
     }
   }
 
+  /// Evaluates an SQL statement.
+  /// See http://www.sqlite.org/c3ref/step.html
   fn step(&self) -> ResultCode {
     unsafe {
       sqlite3::sqlite3_step(self.stmt)
     }
   }
 
+  /// 
+  /// See 
   fn step_row(&self) -> SqliteResult<Option<RowMap>> {
     let is_row: ResultCode = self.step();
     if is_row == SQLITE_ROW {
@@ -325,12 +358,16 @@ pub impl Cursor {
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   fn get_bytes(&self, i: int) -> int {
     unsafe {
       sqlite3::sqlite3_column_bytes(self.stmt, i as c_int) as int
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   unsafe fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
     let bytes = vec::raw::from_buf_raw(
@@ -340,22 +377,30 @@ pub impl Cursor {
     return bytes;
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   fn get_int(&self, i: int) -> int {
     unsafe {
       return sqlite3::sqlite3_column_int(self.stmt, i as c_int) as int;
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   fn get_num(&self, i: int) -> float {
     unsafe {
       return sqlite3::sqlite3_column_double(self.stmt, i as c_int);
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   unsafe fn get_text(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_text(self.stmt, i as c_int) );
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
   fn get_bind_index(&self, name: &str) -> int {
     let stmt = self.stmt;
     do str::as_c_str(name) |namebuf| {
@@ -365,16 +410,22 @@ pub impl Cursor {
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/data_count.html
   fn get_column_count(&self) -> int {
     unsafe {
       return sqlite3::sqlite3_data_count(self.stmt) as int;
     }
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_name.html
   unsafe fn get_column_name(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3::sqlite3_column_name(self.stmt, i as c_int) );
   }
 
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
   fn get_column_type(&self, i: int) -> ColumnType {
     let ct;
     unsafe {
@@ -391,6 +442,7 @@ pub impl Cursor {
     return res;
   }
 
+  /// 
   fn get_column_names(&self) -> ~[~str] {
     let cnt  = self.get_column_count();
     let mut i    = 0;
@@ -402,6 +454,7 @@ pub impl Cursor {
     return r;
   }
 
+  /// 
   fn bind_params(&self, values: &[BindArg]) -> ResultCode {
     let mut i = 0i;
     for values.each |v| {
@@ -414,6 +467,7 @@ pub impl Cursor {
     return SQLITE_OK;
   }
 
+  /// 
   unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let r = match *value {
       Text(copy v) => {
@@ -444,6 +498,9 @@ pub impl Cursor {
   }
 }
 
+
+/// Opens a new database connection.
+/// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
