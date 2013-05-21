@@ -174,7 +174,7 @@ pub impl Database {
 
   /// Executes an SQL statement.
   /// See http://www.sqlite.org/c3ref/exec.html
-  fn exec(&self, sql: &str) -> SqliteResult<ResultCode> {
+  fn exec(&self, sql: &str) -> SqliteResult<bool> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
       unsafe {
@@ -182,7 +182,7 @@ pub impl Database {
       }
     });
 
-    if r == SQLITE_OK { Ok(r) } else { Err(r) }
+    if r == SQLITE_OK { Ok(true) } else { Err(r) }
   }
 
   /// Returns the number of modified/inserted/deleted rows by the most recent
