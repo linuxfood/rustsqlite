@@ -38,255 +38,23 @@
 #[forbid(deprecated_pattern)];
 
 extern mod std;
-use core::libc::*;
-use core::hashmap::HashMap;
+use database::*;
+use sqlite3::*;
+use types::*;
 
-#[deriving(Eq)]
-pub enum ResultCode {
-  SQLITE_OK         =  0,
-  SQLITE_ERROR      =  1,
-  SQLITE_INTERNAL   =  2,
-  SQLITE_PERM       =  3,
-  SQLITE_ABORT      =  4,
-  SQLITE_BUSY       =  5,
-  SQLITE_LOCKED     =  6,
-  SQLITE_NOMEM      =  7,
-  SQLITE_READONLY   =  8,
-  SQLITE_INTERRUPT  =  9,
-  SQLITE_IOERR      = 10,
-  SQLITE_CORRUPT    = 11,
-  SQLITE_NOTFOUND   = 12,
-  SQLITE_FULL       = 13,
-  SQLITE_CANTOPEN   = 14,
-  SQLITE_PROTOCOL   = 15,
-  SQLITE_EMPTY      = 16,
-  SQLITE_SCHEMA     = 17,
-  SQLITE_TOOBIG     = 18,
-  SQLITE_CONSTRAINT = 19,
-  SQLITE_MISMATCH   = 20,
-  SQLITE_MISUSE     = 21,
-  SQLITE_NOLFS      = 22,
-  SQLITE_AUTH       = 23,
-  SQLITE_FORMAT     = 24,
-  SQLITE_RANGE      = 25,
-  SQLITE_NOTADB     = 26,
-  SQLITE_ROW        = 100,
-  SQLITE_DONE       = 101,
-}
+pub mod cursor;
+pub mod database;
+pub mod sqlite3;
+pub mod types;
 
-impl to_str::ToStr for ResultCode {
-  fn to_str(&self) -> ~str {
-    match *self {
-      SQLITE_OK => ~"Ok",
-      SQLITE_ERROR => ~"SQLITE_ERROR",
-      SQLITE_INTERNAL => ~"SQLITE_INTERNAL",
-      SQLITE_PERM => ~"SQLITE_PERM",
-      SQLITE_ABORT => ~"SQLITE_ABORT",
-      SQLITE_BUSY => ~"SQLITE_BUSY",
-      SQLITE_LOCKED => ~"SQLITE_LOCKED",
-      SQLITE_NOMEM => ~"SQLITE_NOMEM",
-      SQLITE_READONLY => ~"SQLITE_READONLY",
-      SQLITE_INTERRUPT => ~"SQLITE_INTERRUPT",
-      SQLITE_IOERR => ~"SQLITE_IOERR",
-      SQLITE_CORRUPT => ~"SQLITE_CORRUPT",
-      SQLITE_NOTFOUND => ~"SQLITE_NOTFOUND",
-      SQLITE_FULL => ~"SQLITE_FULL",
-      SQLITE_CANTOPEN => ~"SQLITE_CANTOPEN",
-      SQLITE_PROTOCOL => ~"SQLITE_PROTOCOL",
-      SQLITE_EMPTY => ~"SQLITE_EMPTY",
-      SQLITE_SCHEMA => ~"SQLITE_SCHEMA",
-      SQLITE_TOOBIG => ~"SQLITE_TOOBIG",
-      SQLITE_CONSTRAINT => ~"SQLITE_CONSTRAINT",
-      SQLITE_MISMATCH => ~"SQLITE_MISMATCH",
-      SQLITE_MISUSE => ~"SQLITE_MISUSE",
-      SQLITE_NOLFS => ~"SQLITE_NOLFS",
-      SQLITE_AUTH => ~"SQLITE_AUTH",
-      SQLITE_FORMAT => ~"SQLITE_FORMAT",
-      SQLITE_RANGE => ~"SQLITE_RANGE",
-      SQLITE_NOTADB => ~"SQLITE_NOTADB",
-      SQLITE_ROW => ~"SQLITE_ROW",
-      SQLITE_DONE => ~"SQLITE_DONE",
-    }
-  }
-}
 
-#[deriving(Eq)]
-pub enum BindArg {
-  Text(~str),
-  Number(float),
-  Integer(int),
-  Blob(~[u8]),
-  Null,
-}
-
-pub enum ColumnType {
-  SQLITE_INTEGER,
-  SQLITE_FLOAT,
-  SQLITE_TEXT,
-  SQLITE_BLOB,
-  SQLITE_NULL,
-}
-
-pub type SqliteResult<T> = Result<T, ResultCode>;
-
-type RowMap = HashMap<~str, BindArg>;
-
-/// The database connection.
-pub struct Database {
-  priv dbh: *dbh,
-}
-
-impl Drop for Database {
-  /// Closes the database connection.
-  /// See http://www.sqlite.org/c3ref/close.html
-  fn finalize(&self) {
-    debug!("freeing dbh resource: %?", self.dbh);
-    unsafe {
-      sqlite3::sqlite3_close(self.dbh);
-    }
-  }
-}
-
-pub impl Database {
-
-  /// Returns the error message of the the most recent call.
-  /// See http://www.sqlite.org/c3ref/errcode.html
-  unsafe fn get_errmsg(&self) -> ~str {
-    str::raw::from_c_str(sqlite3::sqlite3_errmsg(self.dbh))
-  }
-
-  /// Prepares/compiles an SQL statement.
-  /// See http://www.sqlite.org/c3ref/prepare.html
-  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
-    let new_stmt = ptr::null();
-    let r = str::as_c_str(sql, |_sql| {
-      unsafe {
-        sqlite3::sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, &new_stmt, ptr::null())
-      }
-    });
-    if r == SQLITE_OK {
-      debug!("created new stmt: %?", new_stmt);
-      Ok(Cursor { stmt: new_stmt })
-    } else {
-      Err(r)
-    }
-  }
-
-  /// Executes an SQL statement.
-  /// See http://www.sqlite.org/c3ref/exec.html
-  fn exec(&self, sql: &str) -> SqliteResult<bool> {
-    let mut r = SQLITE_ERROR;
-    str::as_c_str(sql, |_sql| {
-      unsafe {
-        r = sqlite3::sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
-      }
-    });
-
-    if r == SQLITE_OK { Ok(true) } else { Err(r) }
-  }
-
-  /// Returns the number of modified/inserted/deleted rows by the most recent
-  /// call.
-  /// See http://www.sqlite.org/c3ref/changes.html
-  fn get_changes(&self) -> int {
-    unsafe {
-      sqlite3::sqlite3_changes(self.dbh) as int
-    }
-  }
-
-  /// Returns the ID of the last inserted row.
-  /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
-  fn get_last_insert_rowid(&self) -> i64 {
-    unsafe {
-      sqlite3::sqlite3_last_insert_rowid(self.dbh)
-    }
-  }
-
-  /// Sets a busy timeout.
-  /// See http://www.sqlite.org/c3ref/busy_timeout.html
-  fn set_busy_timeout(&self, ms: int) -> ResultCode {
-    unsafe {
-      sqlite3::sqlite3_busy_timeout(self.dbh, ms as c_int)
-    }
-  }
-}
-
-pub enum dbh {}
-pub enum stmt {}
-
-pub enum _notused {}
-
-mod sqlite3 {
-  use core::libc::*;
-  use super::*;
-
-  #[link_args="-lsqlite3"]
-  pub extern {
-    fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
-    fn sqlite3_close(dbh: *dbh) -> ResultCode;
-    fn sqlite3_errmsg(dbh: *dbh) -> *c_char;
-    fn sqlite3_changes(dbh: *dbh) -> c_int;
-    fn sqlite3_last_insert_rowid(dbh: *dbh) -> i64;
-    fn sqlite3_complete(sql: *c_char) -> c_int;
-
-    fn sqlite3_prepare_v2(
-      hnd: *dbh,
-      sql: *c_char,
-      sql_len: c_int,
-      shnd: **stmt,
-      tail: **c_char
-    ) -> ResultCode;
-
-    fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> ResultCode;
-
-    fn sqlite3_step(sth: *stmt) -> ResultCode;
-    fn sqlite3_reset(sth: *stmt) -> ResultCode;
-    fn sqlite3_finalize(sth: *stmt) -> ResultCode;
-    fn sqlite3_clear_bindings(sth: *stmt) -> ResultCode;
-
-    fn sqlite3_column_name(sth: *stmt, icol: c_int) -> *c_char;
-    fn sqlite3_column_type(sth: *stmt, icol: c_int) -> c_int;
-    fn sqlite3_data_count(sth: *stmt) -> c_int;
-    fn sqlite3_column_bytes(sth: *stmt, icol: c_int) -> c_int;
-    fn sqlite3_column_blob(sth: *stmt, icol: c_int) -> *u8;
-
-    fn sqlite3_column_text(sth: *stmt, icol: c_int) -> *c_char;
-    fn sqlite3_column_double(sth: *stmt, icol: c_int) -> float;
-    fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
-
-    fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> ResultCode;
-    fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> ResultCode;
-    fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> ResultCode;
-    fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> ResultCode;
-    fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: float) -> ResultCode;
-    fn sqlite3_bind_parameter_index(sth: *stmt, name: *c_char) -> c_int;
-
-    fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> ResultCode;
-  }
-}
-
-/// The database cursor.
-pub struct Cursor {
-  priv stmt: *stmt,
-}
-
-impl Drop for Cursor {
-  /// Deletes a prapred SQL statement.
-  /// See http://www.sqlite.org/c3ref/finalize.html
-  fn finalize(&self) {
-    debug!("freeing stmt resource: %?", self.stmt);
-    unsafe {
-      sqlite3::sqlite3_finalize(self.stmt);
-    }
-  }
-}
 
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = str::as_c_str(sql, { |_sql|
     unsafe {
-      sqlite3::sqlite3_complete(_sql)
+      sqlite3_complete(_sql)
     }
   }) as int;
   if r == SQLITE_NOMEM as int {
@@ -300,204 +68,6 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   }
 }
 
-pub impl Cursor {
-  /// Resets a prepared SQL statement, but does not reset its bindings.
-  /// See http://www.sqlite.org/c3ref/reset.html
-  fn reset(&self) -> ResultCode {
-    unsafe {
-      sqlite3::sqlite3_reset(self.stmt)
-    }
-  }
-
-  /// Resets all bindings on a prepared SQL statement.
-  /// See http://www.sqlite.org/c3ref/clear_bindings.html
-  fn clear_bindings(&self) -> ResultCode {
-    unsafe {
-      sqlite3::sqlite3_clear_bindings(self.stmt)
-    }
-  }
-
-  /// Evaluates an SQL statement.
-  /// See http://www.sqlite.org/c3ref/step.html
-  fn step(&self) -> ResultCode {
-    unsafe {
-      sqlite3::sqlite3_step(self.stmt)
-    }
-  }
-
-  /// 
-  /// See 
-  fn step_row(&self) -> SqliteResult<Option<RowMap>> {
-    let is_row: ResultCode = self.step();
-    if is_row == SQLITE_ROW {
-      let column_cnt = self.get_column_count();
-      let mut i = 0;
-      let mut sqlrow = HashMap::new();
-      while( i < column_cnt ) {
-        let name = self.get_column_name(i);
-        let coltype = self.get_column_type(i);
-        let res = match coltype {
-          SQLITE_INTEGER => sqlrow.insert(name, Integer(self.get_int(i))),
-          SQLITE_FLOAT   => sqlrow.insert(name, Number(self.get_num(i))),
-          SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i))),
-          SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i))),
-          SQLITE_NULL    => sqlrow.insert(name, Null),
-        };
-        if res == false {
-          fail!("Couldn't insert a value into the map for sqlrow!");
-        }
-        i += 1;
-      }
-
-      Ok(Some(sqlrow))
-    }
-    else if is_row == SQLITE_DONE {
-      Ok(None)
-    } else {
-      Err(is_row)
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  fn get_bytes(&self, i: int) -> int {
-    unsafe {
-      sqlite3::sqlite3_column_bytes(self.stmt, i as c_int) as int
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  unsafe fn get_blob(&self, i: int) -> ~[u8] {
-    let len  = self.get_bytes(i);
-    let bytes = vec::raw::from_buf_raw(
-      sqlite3::sqlite3_column_blob(self.stmt, i as c_int),
-      len as uint
-    );
-    return bytes;
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  fn get_int(&self, i: int) -> int {
-    unsafe {
-      return sqlite3::sqlite3_column_int(self.stmt, i as c_int) as int;
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  fn get_num(&self, i: int) -> float {
-    unsafe {
-      return sqlite3::sqlite3_column_double(self.stmt, i as c_int);
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  unsafe fn get_text(&self, i: int) -> ~str {
-    return str::raw::from_c_str( sqlite3::sqlite3_column_text(self.stmt, i as c_int) );
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
-  fn get_bind_index(&self, name: &str) -> int {
-    let stmt = self.stmt;
-    do str::as_c_str(name) |namebuf| {
-      unsafe {
-        sqlite3::sqlite3_bind_parameter_index(stmt, namebuf) as int
-      }
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/data_count.html
-  fn get_column_count(&self) -> int {
-    unsafe {
-      return sqlite3::sqlite3_data_count(self.stmt) as int;
-    }
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_name.html
-  unsafe fn get_column_name(&self, i: int) -> ~str {
-    return str::raw::from_c_str( sqlite3::sqlite3_column_name(self.stmt, i as c_int) );
-  }
-
-  /// 
-  /// See http://www.sqlite.org/c3ref/column_blob.html
-  fn get_column_type(&self, i: int) -> ColumnType {
-    let ct;
-    unsafe {
-      ct = sqlite3::sqlite3_column_type(self.stmt, i as c_int) as int;
-    }
-    let res = match ct {
-      1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
-      2 /* SQLITE_FLOAT   */ => SQLITE_FLOAT,
-      3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
-      4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
-      5 /* SQLITE_NULL    */ => SQLITE_NULL,
-      _ => fail!(fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct)),
-    };
-    return res;
-  }
-
-  /// 
-  fn get_column_names(&self) -> ~[~str] {
-    let cnt  = self.get_column_count();
-    let mut i    = 0;
-    let mut r    = ~[];
-    while(i < cnt){
-      vec::push(&mut r, self.get_column_name(i));
-      i += 1;
-    }
-    return r;
-  }
-
-  /// 
-  fn bind_params(&self, values: &[BindArg]) -> ResultCode {
-    let mut i = 0i;
-    for values.each |v| {
-      let r = self.bind_param(i, v);
-      if r != SQLITE_OK {
-        return r;
-      }
-      i += 1;
-    }
-    return SQLITE_OK;
-  }
-
-  /// 
-  unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
-    let r = match *value {
-      Text(copy v) => {
-        let l = str::len(v);
-        str::as_c_str(v, |_v| {
-          // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
-          //        of copying when binding text or blob values.
-          sqlite3::sqlite3_bind_text(self.stmt, i as c_int, _v, l as c_int, -1 as c_int)
-        })
-      }
-
-      Blob(copy v) => {
-        let l = vec::len(v);
-        // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
-        //        of copying when binding text or blob values.
-        sqlite3::sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
-      }
-
-      Integer(copy v) => { sqlite3::sqlite3_bind_int(self.stmt, i as c_int, v as c_int) }
-
-      Number(copy v) => { sqlite3::sqlite3_bind_double(self.stmt, i as c_int, v) }
-
-      Null => { sqlite3::sqlite3_bind_null(self.stmt, i as c_int) }
-
-    };
-
-    return r;
-  }
-}
-
 
 /// Opens a new database connection.
 /// See http://www.sqlite.org/c3ref/open.html
@@ -505,7 +75,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = str::as_c_str(path, |_path| {
     unsafe {
-      sqlite3::sqlite3_open(_path, &dbh)
+      sqlite3_open(_path, &dbh)
     }
   });
   if r != SQLITE_OK {
@@ -518,7 +88,10 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 
 #[cfg(test)]
 mod tests {
+  use cursor::*;
+  use database::*;
   use super::*;
+  use types::*;
 
   fn checked_prepare(database: Database, sql: &str) -> Cursor {
     match database.prepare(sql, &None) {

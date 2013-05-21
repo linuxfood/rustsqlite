@@ -1,0 +1,218 @@
+use core::libc::*;
+use core::hashmap::HashMap;
+use sqlite3::*;
+use types::*;
+
+/// The database cursor.
+pub struct Cursor {
+  /*priv*/ stmt: *stmt,
+}
+
+impl Drop for Cursor {
+  /// Deletes a prapred SQL statement.
+  /// See http://www.sqlite.org/c3ref/finalize.html
+  fn finalize(&self) {
+    debug!("freeing stmt resource: %?", self.stmt);
+    unsafe {
+      sqlite3_finalize(self.stmt);
+    }
+  }
+}
+
+pub impl Cursor {
+  /// Resets a prepared SQL statement, but does not reset its bindings.
+  /// See http://www.sqlite.org/c3ref/reset.html
+  fn reset(&self) -> ResultCode {
+    unsafe {
+      sqlite3_reset(self.stmt)
+    }
+  }
+
+  /// Resets all bindings on a prepared SQL statement.
+  /// See http://www.sqlite.org/c3ref/clear_bindings.html
+  fn clear_bindings(&self) -> ResultCode {
+    unsafe {
+      sqlite3_clear_bindings(self.stmt)
+    }
+  }
+
+  /// Evaluates an SQL statement.
+  /// See http://www.sqlite.org/c3ref/step.html
+  fn step(&self) -> ResultCode {
+    unsafe {
+      sqlite3_step(self.stmt)
+    }
+  }
+
+  /// 
+  /// See 
+  fn step_row(&self) -> SqliteResult<Option<RowMap>> {
+    let is_row: ResultCode = self.step();
+    if is_row == SQLITE_ROW {
+      let column_cnt = self.get_column_count();
+      let mut i = 0;
+      let mut sqlrow = HashMap::new();
+      while( i < column_cnt ) {
+        let name = self.get_column_name(i);
+        let coltype = self.get_column_type(i);
+        let res = match coltype {
+          SQLITE_INTEGER => sqlrow.insert(name, Integer(self.get_int(i))),
+          SQLITE_FLOAT   => sqlrow.insert(name, Number(self.get_num(i))),
+          SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i))),
+          SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i))),
+          SQLITE_NULL    => sqlrow.insert(name, Null),
+        };
+        if res == false {
+          fail!("Couldn't insert a value into the map for sqlrow!");
+        }
+        i += 1;
+      }
+
+      Ok(Some(sqlrow))
+    }
+    else if is_row == SQLITE_DONE {
+      Ok(None)
+    } else {
+      Err(is_row)
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  fn get_bytes(&self, i: int) -> int {
+    unsafe {
+      sqlite3_column_bytes(self.stmt, i as c_int) as int
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  unsafe fn get_blob(&self, i: int) -> ~[u8] {
+    let len  = self.get_bytes(i);
+    let bytes = vec::raw::from_buf_raw(
+      sqlite3_column_blob(self.stmt, i as c_int),
+      len as uint
+    );
+    return bytes;
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  fn get_int(&self, i: int) -> int {
+    unsafe {
+      return sqlite3_column_int(self.stmt, i as c_int) as int;
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  fn get_num(&self, i: int) -> float {
+    unsafe {
+      return sqlite3_column_double(self.stmt, i as c_int);
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  unsafe fn get_text(&self, i: int) -> ~str {
+    return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
+  fn get_bind_index(&self, name: &str) -> int {
+    let stmt = self.stmt;
+    do str::as_c_str(name) |namebuf| {
+      unsafe {
+        sqlite3_bind_parameter_index(stmt, namebuf) as int
+      }
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/data_count.html
+  fn get_column_count(&self) -> int {
+    unsafe {
+      return sqlite3_data_count(self.stmt) as int;
+    }
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_name.html
+  unsafe fn get_column_name(&self, i: int) -> ~str {
+    return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
+  }
+
+  /// 
+  /// See http://www.sqlite.org/c3ref/column_blob.html
+  fn get_column_type(&self, i: int) -> ColumnType {
+    let ct;
+    unsafe {
+      ct = sqlite3_column_type(self.stmt, i as c_int) as int;
+    }
+    let res = match ct {
+      1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
+      2 /* SQLITE_FLOAT   */ => SQLITE_FLOAT,
+      3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
+      4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
+      5 /* SQLITE_NULL    */ => SQLITE_NULL,
+      _ => fail!(fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct)),
+    };
+    return res;
+  }
+
+  /// 
+  fn get_column_names(&self) -> ~[~str] {
+    let cnt  = self.get_column_count();
+    let mut i    = 0;
+    let mut r    = ~[];
+    while(i < cnt){
+      vec::push(&mut r, self.get_column_name(i));
+      i += 1;
+    }
+    return r;
+  }
+
+  /// 
+  fn bind_params(&self, values: &[BindArg]) -> ResultCode {
+    let mut i = 0i;
+    for values.each |v| {
+      let r = self.bind_param(i, v);
+      if r != SQLITE_OK {
+        return r;
+      }
+      i += 1;
+    }
+    return SQLITE_OK;
+  }
+
+  /// 
+  unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
+    let r = match *value {
+      Text(copy v) => {
+        let l = str::len(v);
+        str::as_c_str(v, |_v| {
+          // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
+          //        of copying when binding text or blob values.
+          sqlite3_bind_text(self.stmt, i as c_int, _v, l as c_int, -1 as c_int)
+        })
+      }
+
+      Blob(copy v) => {
+        let l = vec::len(v);
+        // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
+        //        of copying when binding text or blob values.
+        sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
+      }
+
+      Integer(copy v) => { sqlite3_bind_int(self.stmt, i as c_int, v as c_int) }
+
+      Number(copy v) => { sqlite3_bind_double(self.stmt, i as c_int, v) }
+
+      Null => { sqlite3_bind_null(self.stmt, i as c_int) }
+
+    };
+
+    return r;
+  }
+}
