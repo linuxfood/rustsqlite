@@ -40,7 +40,7 @@ pub struct Cursor {
 }
 
 impl Drop for Cursor {
-  /// Deletes a prapred SQL statement.
+  /// Deletes a prepared SQL statement.
   /// See http://www.sqlite.org/c3ref/finalize.html
   fn finalize(&self) {
     debug!("freeing stmt resource: %?", self.stmt);
@@ -76,7 +76,6 @@ pub impl Cursor {
   }
 
   /// 
-  /// See 
   fn step_row(&self) -> SqliteResult<Option<RowMap>> {
     let is_row: ResultCode = self.step();
     if is_row == SQLITE_ROW {
@@ -160,7 +159,7 @@ pub impl Cursor {
     }
   }
 
-  /// 
+  /// Returns the number of columns in a result set.
   /// See http://www.sqlite.org/c3ref/data_count.html
   fn get_column_count(&self) -> int {
     unsafe {
@@ -168,13 +167,13 @@ pub impl Cursor {
     }
   }
 
-  /// 
+  /// Returns the name of the column with index `i` in the result set.
   /// See http://www.sqlite.org/c3ref/column_name.html
   unsafe fn get_column_name(&self, i: int) -> ~str {
     return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
   }
 
-  /// 
+  /// Returns the type of the column with index `i` in the result set.
   /// See http://www.sqlite.org/c3ref/column_blob.html
   fn get_column_type(&self, i: int) -> ColumnType {
     let ct;
@@ -192,7 +191,7 @@ pub impl Cursor {
     return res;
   }
 
-  /// 
+  /// Returns the names of all columns in the result set.
   fn get_column_names(&self) -> ~[~str] {
     let cnt  = self.get_column_count();
     let mut i    = 0;
@@ -218,6 +217,7 @@ pub impl Cursor {
   }
 
   /// 
+  /// See http://www.sqlite.org/c3ref/bind_blob.html
   unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let r = match *value {
       Text(copy v) => {
