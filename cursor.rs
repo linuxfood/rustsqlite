@@ -51,6 +51,7 @@ impl Drop for Cursor {
 }
 
 pub impl Cursor {
+
   /// Resets a prepared SQL statement, but does not reset its bindings.
   /// See http://www.sqlite.org/c3ref/reset.html
   fn reset(&self) -> ResultCode {
@@ -67,7 +68,7 @@ pub impl Cursor {
     }
   }
 
-  /// Evaluates an SQL statement.
+  /// Evaluates a prepared SQL statement one ore more times.
   /// See http://www.sqlite.org/c3ref/step.html
   fn step(&self) -> ResultCode {
     unsafe {
