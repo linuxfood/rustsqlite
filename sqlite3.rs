@@ -29,7 +29,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use core::libc::*;
+use std::libc::*;
 use types::*;
 
 #[link_args="-lsqlite3"]

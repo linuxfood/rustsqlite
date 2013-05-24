@@ -29,9 +29,9 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use core::libc::*;
-use core::hashmap::HashMap;
 use sqlite3::*;
+use std::libc::*;
+use std::hashmap::HashMap;
 use types::*;
 
 /// The database cursor.

@@ -37,7 +37,7 @@
 */
 #[forbid(deprecated_pattern)];
 
-extern mod std;
+extern mod extra;
 use database::*;
 use sqlite3::*;
 use types::*;
