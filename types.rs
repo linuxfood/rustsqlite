@@ -29,7 +29,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 #[deriving(Eq)]
 pub enum ResultCode {
