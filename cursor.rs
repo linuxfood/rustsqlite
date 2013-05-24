@@ -29,7 +29,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use sqlite3::*;
+use ffi::*;
 use std::libc::*;
 use std::hashmap::HashMap;
 use types::*;

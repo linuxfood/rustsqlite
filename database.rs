@@ -30,7 +30,7 @@
 */
 
 use cursor::*;
-use sqlite3::*;
+use ffi::*;
 use std::libc::*;
 use types::*;
 
