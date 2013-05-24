@@ -39,12 +39,12 @@
 
 extern mod extra;
 use database::*;
-use sqlite3::*;
+use ffi::*;
 use types::*;
 
 pub mod cursor;
 pub mod database;
-pub mod sqlite3;
+mod ffi;
 pub mod types;
 
 
