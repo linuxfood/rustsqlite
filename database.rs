@@ -29,9 +29,9 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use core::libc::*;
 use cursor::*;
 use sqlite3::*;
+use std::libc::*;
 use types::*;
 
 /// The database connection.
