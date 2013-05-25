@@ -82,7 +82,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
     Err(r)
   } else {
     debug!("created new dbh: %?", dbh);
-    Ok(Database { dbh: dbh })
+    Ok(database_with_handle(dbh))
   }
 }
 

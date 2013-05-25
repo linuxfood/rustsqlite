@@ -36,7 +36,11 @@ use types::*;
 
 /// The database connection.
 pub struct Database {
-  /*priv*/ dbh: *dbh,
+  priv dbh: *dbh,
+}
+
+pub fn database_with_handle(dbh: *dbh) -> Database {
+  Database { dbh: dbh }
 }
 
 impl Drop for Database {
@@ -69,7 +73,7 @@ pub impl Database {
     });
     if r == SQLITE_OK {
       debug!("created new stmt: %?", new_stmt);
-      Ok(Cursor { stmt: new_stmt })
+      Ok( cursor_with_statement(new_stmt))
     } else {
       Err(r)
     }

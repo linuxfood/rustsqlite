@@ -36,7 +36,11 @@ use types::*;
 
 /// The database cursor.
 pub struct Cursor {
-  /*priv*/ stmt: *stmt,
+  priv stmt: *stmt,
+}
+
+pub fn cursor_with_statement(stmt: *stmt) -> Cursor {
+  Cursor { stmt: stmt }
 }
 
 impl Drop for Cursor {
