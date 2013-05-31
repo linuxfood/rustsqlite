@@ -92,6 +92,8 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 mod tests {
   use cursor::*;
   use database::*;
+  use std::result;
+  use std::u64;
   use super::*;
   use types::*;
 

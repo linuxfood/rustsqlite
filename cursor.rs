@@ -124,13 +124,15 @@ pub impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
-  unsafe fn get_blob(&self, i: int) -> ~[u8] {
+  fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
-    let bytes = vec::raw::from_buf_raw(
-      sqlite3_column_blob(self.stmt, i as c_int),
-      len as uint
-    );
-    return bytes;
+    unsafe {
+      let bytes = vec::raw::from_buf_raw(
+        sqlite3_column_blob(self.stmt, i as c_int),
+        len as uint
+      );
+      return bytes;
+    }
   }
 
   /// 
@@ -151,8 +153,10 @@ pub impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
-  unsafe fn get_text(&self, i: int) -> ~str {
-    return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
+  fn get_text(&self, i: int) -> ~str {
+    unsafe {
+      return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
+    }
   }
 
   /// 
@@ -176,8 +180,10 @@ pub impl Cursor {
 
   /// Returns the name of the column with index `i` in the result set.
   /// See http://www.sqlite.org/c3ref/column_name.html
-  unsafe fn get_column_name(&self, i: int) -> ~str {
-    return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
+  fn get_column_name(&self, i: int) -> ~str {
+    unsafe {
+      return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
+    }
   }
 
   /// Returns the type of the column with index `i` in the result set.
@@ -225,14 +231,16 @@ pub impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/bind_blob.html
-  unsafe fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
+  fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let r = match *value {
       Text(copy v) => {
         let l = str::len(v);
         str::as_c_str(v, |_v| {
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
-          sqlite3_bind_text(self.stmt, i as c_int, _v, l as c_int, -1 as c_int)
+          unsafe {
+            sqlite3_bind_text(self.stmt, i as c_int, _v, l as c_int, -1 as c_int)
+          }
         })
       }
 
@@ -240,14 +248,16 @@ pub impl Cursor {
         let l = vec::len(v);
         // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
         //        of copying when binding text or blob values.
-        sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
+        unsafe {
+          sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
+        }
       }
 
-      Integer(copy v) => { sqlite3_bind_int(self.stmt, i as c_int, v as c_int) }
+      Integer(copy v) => { unsafe { sqlite3_bind_int(self.stmt, i as c_int, v as c_int) } }
 
-      Number(copy v) => { sqlite3_bind_double(self.stmt, i as c_int, v) }
+      Number(copy v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, v) } }
 
-      Null => { sqlite3_bind_null(self.stmt, i as c_int) }
+      Null => { unsafe { sqlite3_bind_null(self.stmt, i as c_int) } }
 
     };
 
