@@ -30,6 +30,7 @@
 */
 
 use std::hashmap::HashMap;
+use std::to_str;
 
 #[deriving(Eq)]
 pub enum ResultCode {
