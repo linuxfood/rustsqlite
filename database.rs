@@ -60,8 +60,10 @@ pub impl Database {
 
   /// Returns the error message of the the most recent call.
   /// See http://www.sqlite.org/c3ref/errcode.html
-  unsafe fn get_errmsg(&self) -> ~str {
-    str::raw::from_c_str(sqlite3_errmsg(self.dbh))
+  fn get_errmsg(&self) -> ~str {
+    unsafe {
+      str::raw::from_c_str(sqlite3_errmsg(self.dbh))
+    }
   }
 
   /// Prepares/compiles an SQL statement.
