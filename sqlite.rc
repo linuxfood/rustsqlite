@@ -41,6 +41,8 @@ extern mod extra;
 use database::*;
 use ffi::*;
 use types::*;
+use std::ptr;
+use std::str;
 
 pub mod cursor;
 pub mod database;

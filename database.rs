@@ -32,6 +32,8 @@
 use cursor::*;
 use ffi::*;
 use std::libc::*;
+use std::ptr;
+use std::str;
 use types::*;
 
 /// The database connection.
