@@ -32,6 +32,8 @@
 use ffi::*;
 use std::libc::*;
 use std::hashmap::HashMap;
+use std::str;
+use std::vec;
 use types::*;
 
 /// The database cursor.
