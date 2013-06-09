@@ -56,11 +56,11 @@ impl Drop for Database {
   }
 }
 
-pub impl Database {
+impl Database {
 
   /// Returns the error message of the the most recent call.
   /// See http://www.sqlite.org/c3ref/errcode.html
-  fn get_errmsg(&self) -> ~str {
+  pub fn get_errmsg(&self) -> ~str {
     unsafe {
       str::raw::from_c_str(sqlite3_errmsg(self.dbh))
     }
@@ -68,7 +68,7 @@ pub impl Database {
 
   /// Prepares/compiles an SQL statement.
   /// See http://www.sqlite.org/c3ref/prepare.html
-  fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
+  pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
     let r = str::as_c_str(sql, |_sql| {
       unsafe {
@@ -85,7 +85,7 @@ pub impl Database {
 
   /// Executes an SQL statement.
   /// See http://www.sqlite.org/c3ref/exec.html
-  fn exec(&self, sql: &str) -> SqliteResult<bool> {
+  pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
     let mut r = SQLITE_ERROR;
     str::as_c_str(sql, |_sql| {
       unsafe {
@@ -99,7 +99,7 @@ pub impl Database {
   /// Returns the number of modified/inserted/deleted rows by the most recent
   /// call.
   /// See http://www.sqlite.org/c3ref/changes.html
-  fn get_changes(&self) -> int {
+  pub fn get_changes(&self) -> int {
     unsafe {
       sqlite3_changes(self.dbh) as int
     }
@@ -107,7 +107,7 @@ pub impl Database {
 
   /// Returns the ID of the last inserted row.
   /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
-  fn get_last_insert_rowid(&self) -> i64 {
+  pub fn get_last_insert_rowid(&self) -> i64 {
     unsafe {
       sqlite3_last_insert_rowid(self.dbh)
     }
@@ -115,7 +115,7 @@ pub impl Database {
 
   /// Sets a busy timeout.
   /// See http://www.sqlite.org/c3ref/busy_timeout.html
-  fn set_busy_timeout(&self, ms: int) -> ResultCode {
+  pub fn set_busy_timeout(&self, ms: int) -> ResultCode {
     unsafe {
       sqlite3_busy_timeout(self.dbh, ms as c_int)
     }
