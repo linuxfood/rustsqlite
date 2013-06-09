@@ -233,9 +233,9 @@ impl Cursor {
   /// See http://www.sqlite.org/c3ref/bind_blob.html
   pub fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let r = match *value {
-      Text(v) => {
-        let l = str::len(v);
-        str::as_c_str(v, |_v| {
+      Text(ref v) => {
+        let l = v.len();
+        str::as_c_str(*v, |_v| {
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
           unsafe {
@@ -244,18 +244,18 @@ impl Cursor {
         })
       }
 
-      Blob(v) => {
+      Blob(ref v) => {
         let l = v.len();
         // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
         //        of copying when binding text or blob values.
         unsafe {
-          sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(v), l as c_int, -1 as c_int)
+          sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(*v), l as c_int, -1 as c_int)
         }
       }
 
-      Integer(v) => { unsafe { sqlite3_bind_int(self.stmt, i as c_int, v as c_int) } }
+      Integer(ref v) => { unsafe { sqlite3_bind_int(self.stmt, i as c_int, *v as c_int) } }
 
-      Number(v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, v) } }
+      Number(ref v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, *v) } }
 
       Null => { unsafe { sqlite3_bind_null(self.stmt, i as c_int) } }
 
