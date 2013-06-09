@@ -245,7 +245,7 @@ impl Cursor {
       }
 
       Blob(v) => {
-        let l = vec::len(v);
+        let l = v.len();
         // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
         //        of copying when binding text or blob values.
         unsafe {
