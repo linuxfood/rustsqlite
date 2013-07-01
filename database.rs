@@ -48,7 +48,7 @@ pub fn database_with_handle(dbh: *dbh) -> Database {
 impl Drop for Database {
   /// Closes the database connection.
   /// See http://www.sqlite.org/c3ref/close.html
-  fn finalize(&self) {
+  fn drop(&self) {
     debug!("freeing dbh resource: %?", self.dbh);
     unsafe {
       sqlite3_close(self.dbh);
@@ -72,7 +72,7 @@ impl Database {
     let new_stmt = ptr::null();
     let r = str::as_c_str(sql, |_sql| {
       unsafe {
-        sqlite3_prepare_v2(self.dbh, _sql, str::len(sql) as c_int, &new_stmt, ptr::null())
+        sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &new_stmt, ptr::null())
       }
     });
     if r == SQLITE_OK {
