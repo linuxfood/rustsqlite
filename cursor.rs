@@ -48,7 +48,7 @@ pub fn cursor_with_statement(stmt: *stmt) -> Cursor {
 impl Drop for Cursor {
   /// Deletes a prepared SQL statement.
   /// See http://www.sqlite.org/c3ref/finalize.html
-  fn finalize(&self) {
+  fn drop(&self) {
     debug!("freeing stmt resource: %?", self.stmt);
     unsafe {
       sqlite3_finalize(self.stmt);
@@ -210,7 +210,7 @@ impl Cursor {
     let mut i    = 0;
     let mut r    = ~[];
     while(i < cnt){
-      vec::push(&mut r, self.get_column_name(i));
+      r.push(self.get_column_name(i));
       i += 1;
     }
     return r;
@@ -219,7 +219,7 @@ impl Cursor {
   /// 
   pub fn bind_params(&self, values: &[BindArg]) -> ResultCode {
     let mut i = 0i;
-    for values.each |v| {
+    for values.iter().advance |v| {
       let r = self.bind_param(i, v);
       if r != SQLITE_OK {
         return r;
