@@ -29,6 +29,8 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+extern mod types;
+
 use std::libc::*;
 use types::*;
 

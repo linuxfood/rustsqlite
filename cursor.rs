@@ -29,6 +29,9 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+extern mod ffi;
+extern mod types;
+
 use ffi::*;
 use std::libc::*;
 use std::hashmap::HashMap;
