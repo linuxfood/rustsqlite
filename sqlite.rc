@@ -35,14 +35,12 @@
 ** ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ** POSSIBILITY OF SUCH DAMAGE.
 */
-#[forbid(deprecated_pattern)];
 
 extern mod extra;
 use database::*;
 use ffi::*;
 use types::*;
 use std::ptr;
-use std::str;
 
 pub mod cursor;
 pub mod database;
@@ -54,7 +52,7 @@ pub mod types;
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
-  let r = str::as_c_str(sql, { |_sql|
+  let r = sql.as_c_str( { |_sql|
     unsafe {
       sqlite3_complete(_sql)
     }
@@ -75,7 +73,7 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 /// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
-  let r = str::as_c_str(path, |_path| {
+  let r = path.as_c_str( |_path| {
     unsafe {
       sqlite3_open(_path, &dbh)
     }
@@ -92,7 +90,6 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 mod tests {
   use cursor::*;
   use database::*;
-  use std::result;
   use std::u64;
   use super::*;
   use types::*;
@@ -246,7 +243,7 @@ mod tests {
     );
     let sth = checked_prepare(database, "SELECT * FROM test WHERE id=2");
     let r = sth.step_row();
-    let possible_row = result::unwrap(r);
+    let possible_row = r.unwrap();
     match possible_row {
       Some(x) => {
         let mut x = x;
