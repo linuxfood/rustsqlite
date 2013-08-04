@@ -1,4 +1,4 @@
-These are sqlite bindings (version 3) for Rust.
+# SQLite3 Bindings for Rust
 
 To build, just run `rustc sqlite.rs`.
 
