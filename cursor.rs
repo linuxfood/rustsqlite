@@ -219,7 +219,7 @@ impl Cursor {
   /// 
   pub fn bind_params(&self, values: &[BindArg]) -> ResultCode {
     let mut i = 0i;
-    for values.iter().advance |v| {
+    for v in values.iter() {
       let r = self.bind_param(i, v);
       if r != SQLITE_OK {
         return r;
