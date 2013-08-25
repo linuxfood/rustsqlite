@@ -163,7 +163,7 @@ impl Cursor {
   /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
   pub fn get_bind_index(&self, name: &str) -> int {
     let stmt = self.stmt;
-    do name.as_c_str() |namebuf| {
+    do name.to_c_str().with_ref() |namebuf| {
       unsafe {
         sqlite3_bind_parameter_index(stmt, namebuf) as int
       }
@@ -235,7 +235,7 @@ impl Cursor {
     let r = match *value {
       Text(ref v) => {
         let l = v.len();
-        (*v).as_c_str( |_v| {
+        (*v).to_c_str().with_ref( |_v| {
           // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
           //        of copying when binding text or blob values.
           unsafe {

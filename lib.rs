@@ -52,7 +52,7 @@ pub mod types;
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
-  let r = sql.as_c_str( { |_sql|
+  let r = sql.to_c_str().with_ref( { |_sql|
     unsafe {
       sqlite3_complete(_sql)
     }
@@ -73,7 +73,7 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 /// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
-  let r = path.as_c_str( |_path| {
+  let r = path.to_c_str().with_ref( |_path| {
     unsafe {
       sqlite3_open(_path, &dbh)
     }

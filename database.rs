@@ -70,7 +70,7 @@ impl Database {
   /// See http://www.sqlite.org/c3ref/prepare.html
   pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
-    let r = sql.as_c_str( |_sql| {
+    let r = sql.to_c_str().with_ref( |_sql| {
       unsafe {
         sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &new_stmt, ptr::null())
       }
@@ -87,7 +87,7 @@ impl Database {
   /// See http://www.sqlite.org/c3ref/exec.html
   pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
     let mut r = SQLITE_ERROR;
-    sql.as_c_str( |_sql| {
+    sql.to_c_str().with_ref( |_sql| {
       unsafe {
         r = sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
       }
