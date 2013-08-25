@@ -48,6 +48,7 @@ pub fn cursor_with_statement(stmt: *stmt) -> Cursor {
 impl Drop for Cursor {
   /// Deletes a prepared SQL statement.
   /// See http://www.sqlite.org/c3ref/finalize.html
+  #[fixed_stack_segment]
   fn drop(&self) {
     debug!("freeing stmt resource: %?", self.stmt);
     unsafe {
@@ -60,6 +61,7 @@ impl Cursor {
 
   /// Resets a prepared SQL statement, but does not reset its bindings.
   /// See http://www.sqlite.org/c3ref/reset.html
+  #[fixed_stack_segment]
   pub fn reset(&self) -> ResultCode {
     unsafe {
       sqlite3_reset(self.stmt)
@@ -68,6 +70,7 @@ impl Cursor {
 
   /// Resets all bindings on a prepared SQL statement.
   /// See http://www.sqlite.org/c3ref/clear_bindings.html
+  #[fixed_stack_segment]
   pub fn clear_bindings(&self) -> ResultCode {
     unsafe {
       sqlite3_clear_bindings(self.stmt)
@@ -76,6 +79,7 @@ impl Cursor {
 
   /// Evaluates a prepared SQL statement one ore more times.
   /// See http://www.sqlite.org/c3ref/step.html
+  #[fixed_stack_segment]
   pub fn step(&self) -> ResultCode {
     unsafe {
       sqlite3_step(self.stmt)
@@ -116,6 +120,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_bytes(&self, i: int) -> int {
     unsafe {
       sqlite3_column_bytes(self.stmt, i as c_int) as int
@@ -124,6 +129,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_blob(&self, i: int) -> ~[u8] {
     let len  = self.get_bytes(i);
     unsafe {
@@ -137,6 +143,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_int(&self, i: int) -> int {
     unsafe {
       return sqlite3_column_int(self.stmt, i as c_int) as int;
@@ -145,6 +152,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_num(&self, i: int) -> float {
     unsafe {
       return sqlite3_column_double(self.stmt, i as c_int);
@@ -153,6 +161,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_text(&self, i: int) -> ~str {
     unsafe {
       return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
@@ -161,6 +170,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
+  #[fixed_stack_segment]
   pub fn get_bind_index(&self, name: &str) -> int {
     let stmt = self.stmt;
     do name.to_c_str().with_ref() |namebuf| {
@@ -172,6 +182,7 @@ impl Cursor {
 
   /// Returns the number of columns in a result set.
   /// See http://www.sqlite.org/c3ref/data_count.html
+  #[fixed_stack_segment]
   pub fn get_column_count(&self) -> int {
     unsafe {
       return sqlite3_data_count(self.stmt) as int;
@@ -180,6 +191,7 @@ impl Cursor {
 
   /// Returns the name of the column with index `i` in the result set.
   /// See http://www.sqlite.org/c3ref/column_name.html
+  #[fixed_stack_segment]
   pub fn get_column_name(&self, i: int) -> ~str {
     unsafe {
       return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
@@ -188,6 +200,7 @@ impl Cursor {
 
   /// Returns the type of the column with index `i` in the result set.
   /// See http://www.sqlite.org/c3ref/column_blob.html
+  #[fixed_stack_segment]
   pub fn get_column_type(&self, i: int) -> ColumnType {
     let ct;
     unsafe {
@@ -231,6 +244,7 @@ impl Cursor {
 
   /// 
   /// See http://www.sqlite.org/c3ref/bind_blob.html
+  #[fixed_stack_segment]
   pub fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
     let r = match *value {
       Text(ref v) => {
