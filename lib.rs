@@ -92,7 +92,6 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 mod tests {
   use cursor::*;
   use database::*;
-  use std::u64;
   use super::*;
   use types::*;
 
@@ -226,7 +225,7 @@ mod tests {
       COMMIT;
       "
     );
-    debug!("last insert_id: %s", u64::to_str(database.get_last_insert_rowid() as u64));
+    debug!("last insert_id: %s", (database.get_last_insert_rowid() as u64).to_str() );
     assert!(database.get_last_insert_rowid() == 1_i64);
   }
 
@@ -268,7 +267,7 @@ mod tests {
 
     fn is_ok_and(r: SqliteResult<bool>, v: bool) -> bool {
       assert!(r.is_ok());
-      return r.get() == v;
+      return r.unwrap() == v;
     }
   }
 }
