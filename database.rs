@@ -49,7 +49,7 @@ impl Drop for Database {
   /// Closes the database connection.
   /// See http://www.sqlite.org/c3ref/close.html
   #[fixed_stack_segment]
-  fn drop(&self) {
+  fn drop(&mut self) {
     debug!("freeing dbh resource: %?", self.dbh);
     unsafe {
       sqlite3_close(self.dbh);

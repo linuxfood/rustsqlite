@@ -49,7 +49,7 @@ impl Drop for Cursor {
   /// Deletes a prepared SQL statement.
   /// See http://www.sqlite.org/c3ref/finalize.html
   #[fixed_stack_segment]
-  fn drop(&self) {
+  fn drop(&mut self) {
     debug!("freeing stmt resource: %?", self.stmt);
     unsafe {
       sqlite3_finalize(self.stmt);
