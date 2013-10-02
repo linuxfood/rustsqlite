@@ -104,7 +104,7 @@ impl to_str::ToStr for ResultCode {
 #[deriving(Eq)]
 pub enum BindArg {
   Text(~str),
-  Number(float),
+  Number(f64),
   Integer(int),
   Blob(~[u8]),
   Null,
