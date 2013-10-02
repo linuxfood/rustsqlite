@@ -86,7 +86,7 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   pub fn step_row(&self) -> SqliteResult<Option<RowMap>> {
     let is_row: ResultCode = self.step();
     if is_row == SQLITE_ROW {
@@ -118,7 +118,7 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/column_blob.html
   #[fixed_stack_segment]
   pub fn get_bytes(&self, i: int) -> int {
@@ -127,7 +127,7 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/column_blob.html
   #[fixed_stack_segment]
   pub fn get_blob(&self, i: int) -> ~[u8] {
@@ -141,7 +141,7 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/column_blob.html
   #[fixed_stack_segment]
   pub fn get_int(&self, i: int) -> int {
@@ -150,16 +150,16 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/column_blob.html
   #[fixed_stack_segment]
-  pub fn get_num(&self, i: int) -> float {
+  pub fn get_num(&self, i: int) -> f64 {
     unsafe {
       return sqlite3_column_double(self.stmt, i as c_int);
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/column_blob.html
   #[fixed_stack_segment]
   pub fn get_text(&self, i: int) -> ~str {
@@ -168,7 +168,7 @@ impl Cursor {
     }
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
   #[fixed_stack_segment]
   pub fn get_bind_index(&self, name: &str) -> int {
@@ -229,7 +229,7 @@ impl Cursor {
     return r;
   }
 
-  /// 
+  ///
   pub fn bind_params(&self, values: &[BindArg]) -> ResultCode {
     let mut i = 0i;
     for v in values.iter() {
@@ -242,7 +242,7 @@ impl Cursor {
     return SQLITE_OK;
   }
 
-  /// 
+  ///
   /// See http://www.sqlite.org/c3ref/bind_blob.html
   #[fixed_stack_segment]
   pub fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
