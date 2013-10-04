@@ -1,9 +1,4 @@
-#[link(
-  name = "sqlite",
-  vers = "0.1",
-  uuid = "5dd017c1-a8fb-458f-b430-cecf793ffbd5"
-)];
-#[crate_type = "lib"];
+#[link(name = "sqlite", vers = "0.1")];
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
