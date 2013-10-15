@@ -29,6 +29,10 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+extern mod cursor;
+extern mod ffi;
+extern mod types;
+
 use cursor::*;
 use ffi::*;
 use std::libc::*;
