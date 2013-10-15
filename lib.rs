@@ -1,4 +1,5 @@
 #[link(name = "sqlite", vers = "0.1")];
+#[crate_type = "lib"];
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
