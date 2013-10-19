@@ -50,7 +50,7 @@ impl Drop for Cursor {
   /// See http://www.sqlite.org/c3ref/finalize.html
   #[fixed_stack_segment]
   fn drop(&mut self) {
-    debug!("freeing stmt resource: %?", self.stmt);
+    debug2!("freeing stmt resource: {:?}", self.stmt);
     unsafe {
       sqlite3_finalize(self.stmt);
     }
@@ -212,7 +212,7 @@ impl Cursor {
       3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
       4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
       5 /* SQLITE_NULL    */ => SQLITE_NULL,
-      _ => fail!(fmt!("sqlite internal error: Got an unknown column type (%d) back from the library.", ct)),
+      _ => fail!(format!("sqlite internal error: Got an unknown column type ({:d}) back from the library.", ct)),
     };
     return res;
   }
