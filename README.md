@@ -3,7 +3,7 @@
 [<img src="https://travis-ci.org/linuxfood/rustsqlite.png?branch=master">](https://travis-ci.org/linuxfood/rustsqlite)
 
 
-To build, just run `rustc lib.rs`.
+To build, just run `rustpkg build sqlite`.
 
 The interface is currently evolving both along with Rust and as I think of
 better ways to implement various behaviors. If you have ideas about better
