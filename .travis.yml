@@ -4,4 +4,4 @@ before_install:
 install:
   - sudo apt-get install rust-nightly sqlite3
 script:
-  - rustc lib.rs
+  - rustpkg build sqlite
