@@ -50,7 +50,7 @@ impl Drop for Database {
   /// See http://www.sqlite.org/c3ref/close.html
   #[fixed_stack_segment]
   fn drop(&mut self) {
-    debug2!("freeing dbh resource: {:?}", self.dbh);
+    debug!("freeing dbh resource: {:?}", self.dbh);
     unsafe {
       sqlite3_close(self.dbh);
     }
@@ -79,7 +79,7 @@ impl Database {
       }
     });
     if r == SQLITE_OK {
-      debug2!("created new stmt: {:?}", new_stmt);
+      debug!("created new stmt: {:?}", new_stmt);
       Ok( cursor_with_statement(new_stmt))
     } else {
       Err(r)

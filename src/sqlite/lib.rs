@@ -80,7 +80,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
   if r != SQLITE_OK {
     Err(r)
   } else {
-    debug2!("created new dbh: {:?}", dbh);
+    debug!("created new dbh: {:?}", dbh);
     Ok(database_with_handle(dbh))
   }
 }
@@ -95,7 +95,7 @@ mod tests {
   fn checked_prepare(database: Database, sql: &str) -> Cursor {
     match database.prepare(sql, &None) {
       Ok(s)  => s,
-      Err(x) => fail!(format!("sqlite error: \"{:s}\" ({:?})", database.get_errmsg(), x)),
+      Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
     }
   }
 
@@ -129,7 +129,7 @@ mod tests {
     checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     let sth = checked_prepare(database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
     let res = sth.step();
-    debug2!("prepare_insert_stmt step res: {:?}", res);
+    debug!("prepare_insert_stmt step res: {:?}", res);
   }
 
   #[test]
@@ -222,7 +222,7 @@ mod tests {
       COMMIT;
       "
     );
-    debug2!("last insert_id: {:s}", (database.get_last_insert_rowid() as u64).to_str() );
+    debug!("last insert_id: {}", (database.get_last_insert_rowid() as u64).to_str() );
     assert!(database.get_last_insert_rowid() == 1_i64);
   }
 

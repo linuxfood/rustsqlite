@@ -50,7 +50,7 @@ impl Drop for Cursor {
   /// See http://www.sqlite.org/c3ref/finalize.html
   #[fixed_stack_segment]
   fn drop(&mut self) {
-    debug2!("freeing stmt resource: {:?}", self.stmt);
+    debug!("freeing stmt resource: {:?}", self.stmt);
     unsafe {
       sqlite3_finalize(self.stmt);
     }
