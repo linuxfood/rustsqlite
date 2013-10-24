@@ -1,9 +1,9 @@
 # SQLite3 Bindings for Rust
 
-[<img src="https://travis-ci.org/linuxfood/rustsqlite.png?branch=master">](https://travis-ci.org/linuxfood/rustsqlite)
+[<img src="https://travis-ci.org/kud1ing/rustsqlite.png?branch=master">](https://travis-ci.org/kud1ing/rustsqlite)
 
 
-To build, just run `rustpkg build sqlite`.
+`rustpkg install github.com/linuxfood/rustsqlite`.
 
 The interface is currently evolving both along with Rust and as I think of
 better ways to implement various behaviors. If you have ideas about better
