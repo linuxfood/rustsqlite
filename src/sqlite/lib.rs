@@ -148,7 +148,7 @@ mod tests {
   }
 
   #[test]
-  fn prepared_stmt_bind() {
+  fn prepared_stmt_bind_int() {
     let database = checked_open();
 
     checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
@@ -164,6 +164,17 @@ mod tests {
 
     assert!(sth.step() == SQLITE_ROW);
     assert!(sth.get_num(0) as int == 3);
+  }
+
+  #[test]
+  fn prepared_stmt_bind_text() {
+    let database = checked_open();
+
+    checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
+
+    let sth = checked_prepare(database, "INSERT INTO test (name) VALUES (?)");
+
+    assert!(sth.bind_param(1, &Text(~"test")) == SQLITE_OK);
   }
 
   #[test]
