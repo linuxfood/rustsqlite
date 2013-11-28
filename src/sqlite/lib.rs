@@ -174,6 +174,7 @@ mod tests {
 
     let sth = checked_prepare(database, "INSERT INTO test (name) VALUES (?)");
 
+    println!("`prepared_stmt_bind_text()` currently segfaults here:");
     assert!(sth.bind_param(1, &Text(~"test")) == SQLITE_OK);
   }
 
