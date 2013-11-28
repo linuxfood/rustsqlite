@@ -33,6 +33,7 @@ use std::hashmap::HashMap;
 use std::to_str;
 
 #[deriving(Eq)]
+#[repr(C)]
 pub enum ResultCode {
   SQLITE_OK         =  0,
   SQLITE_ERROR      =  1,

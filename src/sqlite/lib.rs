@@ -1,4 +1,4 @@
-#[link(name = "sqlite", vers = "0.1")];
+#[link(name = "sqlite", package_id = "sqlite", vers = "0.1")];
 #[crate_type = "lib"];
 #[feature(globs)];
 
@@ -48,7 +48,6 @@ pub mod types;
 
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
-#[fixed_stack_segment]
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
   let r = sql.to_c_str().with_ref( { |_sql|
     unsafe {
@@ -69,7 +68,6 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 
 /// Opens a new database connection.
 /// See http://www.sqlite.org/c3ref/open.html
-#[fixed_stack_segment]
 pub fn open(path: &str) -> SqliteResult<Database> {
   let dbh = ptr::null();
   let r = path.to_c_str().with_ref( |_path| {

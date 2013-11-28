@@ -48,7 +48,6 @@ pub fn database_with_handle(dbh: *dbh) -> Database {
 impl Drop for Database {
   /// Closes the database connection.
   /// See http://www.sqlite.org/c3ref/close.html
-  #[fixed_stack_segment]
   fn drop(&mut self) {
     debug!("freeing dbh resource: {:?}", self.dbh);
     unsafe {
@@ -61,7 +60,6 @@ impl Database {
 
   /// Returns the error message of the the most recent call.
   /// See http://www.sqlite.org/c3ref/errcode.html
-  #[fixed_stack_segment]
   pub fn get_errmsg(&self) -> ~str {
     unsafe {
       str::raw::from_c_str(sqlite3_errmsg(self.dbh))
@@ -70,7 +68,6 @@ impl Database {
 
   /// Prepares/compiles an SQL statement.
   /// See http://www.sqlite.org/c3ref/prepare.html
-  #[fixed_stack_segment]
   pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
     let new_stmt = ptr::null();
     let r = sql.to_c_str().with_ref( |_sql| {
@@ -88,7 +85,6 @@ impl Database {
 
   /// Executes an SQL statement.
   /// See http://www.sqlite.org/c3ref/exec.html
-  #[fixed_stack_segment]
   pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
     let mut r = SQLITE_ERROR;
     sql.to_c_str().with_ref( |_sql| {
@@ -103,7 +99,6 @@ impl Database {
   /// Returns the number of modified/inserted/deleted rows by the most recent
   /// call.
   /// See http://www.sqlite.org/c3ref/changes.html
-  #[fixed_stack_segment]
   pub fn get_changes(&self) -> int {
     unsafe {
       sqlite3_changes(self.dbh) as int
@@ -112,7 +107,6 @@ impl Database {
 
   /// Returns the ID of the last inserted row.
   /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
-  #[fixed_stack_segment]
   pub fn get_last_insert_rowid(&self) -> i64 {
     unsafe {
       sqlite3_last_insert_rowid(self.dbh)
@@ -121,7 +115,6 @@ impl Database {
 
   /// Sets a busy timeout.
   /// See http://www.sqlite.org/c3ref/busy_timeout.html
-  #[fixed_stack_segment]
   pub fn set_busy_timeout(&self, ms: int) -> ResultCode {
     unsafe {
       sqlite3_busy_timeout(self.dbh, ms as c_int)
