@@ -3,5 +3,7 @@ before_install:
   - sudo apt-get update
 install:
   - sudo apt-get install rust-nightly sqlite3
+notifications:
+  email: false
 script:
   - rustpkg build sqlite
