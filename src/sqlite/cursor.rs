@@ -42,6 +42,7 @@ pub struct Cursor {
 }
 
 pub fn cursor_with_statement(stmt: *stmt) -> Cursor {
+    debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
     Cursor { stmt: stmt }
 }
 
@@ -49,7 +50,7 @@ impl Drop for Cursor {
     /// Deletes a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/finalize.html
     fn drop(&mut self) {
-        debug!("freeing stmt resource: {:?}", self.stmt);
+        debug!("`Cursor.drop()`: stmt={:?}", self.stmt);
         unsafe {
             sqlite3_finalize(self.stmt);
         }
@@ -230,24 +231,43 @@ impl Cursor {
     ///
     /// See http://www.sqlite.org/c3ref/bind_blob.html
     pub fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
+
+        debug!("`Cursor.bind_param()`: stmt={:?}", self.stmt);
+
         let r = match *value {
             Text(ref v) => {
-                let l = v.len();
+                let l = v.len() + 1;
+
+                debug!("`Text`: v={:?}, l={:?}", v, l);
+
                 (*v).to_c_str().with_ref( |_v| {
-                    // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
-                    // of copying when binding text or blob values.
+                    // FIXME: do not copy the data
                     unsafe {
-                        sqlite3_bind_text(self.stmt, i as c_int, _v, l as c_int, -1 as c_int)
+                        sqlite3_bind_text(
+                              self.stmt   // the SQL statement
+                            , i as c_int  // the SQL parameter index (starting from 1)
+                            , _v          // the value to bind
+                            , l as c_int  // the number of bytes
+                            , -1 as c_int // SQLITE_TRANSIENT => SQLite makes a copy
+                            )
                     }
                 })
             }
 
             Blob(ref v) => {
                 let l = v.len();
-                // FIXME: -1 means: SQLITE_TRANSIENT, so this interface will do lots
-                // of copying when binding text or blob values.
+
+                debug!("`Blob`: v={:?}, l={:?}", v, l);
+
+                // FIXME: do not copy the data
                 unsafe {
-                    sqlite3_bind_blob(self.stmt, i as c_int, vec::raw::to_ptr(*v), l as c_int, -1 as c_int)
+                    sqlite3_bind_blob(
+                          self.stmt            // the SQL statement
+                        , i as c_int           // the SQL parameter index (starting from 1)
+                        , vec::raw::to_ptr(*v) // the value to bind
+                        , l as c_int           // the number of bytes
+                        , -1 as c_int          // SQLITE_TRANSIENT => SQLite makes a copy
+                        )
                 }
             }
 
