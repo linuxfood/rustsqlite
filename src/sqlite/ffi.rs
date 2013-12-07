@@ -34,44 +34,44 @@ use types::*;
 
 #[link(name = "sqlite3")]
 extern {
-  pub fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
-  pub fn sqlite3_close(dbh: *dbh) -> ResultCode;
-  pub fn sqlite3_errmsg(dbh: *dbh) -> *c_char;
-  pub fn sqlite3_changes(dbh: *dbh) -> c_int;
-  pub fn sqlite3_last_insert_rowid(dbh: *dbh) -> i64;
-  pub fn sqlite3_complete(sql: *c_char) -> c_int;
+    pub fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
+    pub fn sqlite3_close(dbh: *dbh) -> ResultCode;
+    pub fn sqlite3_errmsg(dbh: *dbh) -> *c_char;
+    pub fn sqlite3_changes(dbh: *dbh) -> c_int;
+    pub fn sqlite3_last_insert_rowid(dbh: *dbh) -> i64;
+    pub fn sqlite3_complete(sql: *c_char) -> c_int;
 
-  pub fn sqlite3_prepare_v2(
-    hnd: *dbh,
-    sql: *c_char,
-    sql_len: c_int,
-    shnd: **stmt,
-    tail: **c_char
-  ) -> ResultCode;
+    pub fn sqlite3_prepare_v2(
+        hnd: *dbh,
+        sql: *c_char,
+        sql_len: c_int,
+        shnd: **stmt,
+        tail: **c_char
+    ) -> ResultCode;
 
-  pub fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> ResultCode;
+    pub fn sqlite3_exec(dbh: *dbh, sql: *c_char, cb: *_notused, d: *_notused, err: **c_char) -> ResultCode;
 
-  pub fn sqlite3_step(sth: *stmt) -> ResultCode;
-  pub fn sqlite3_reset(sth: *stmt) -> ResultCode;
-  pub fn sqlite3_finalize(sth: *stmt) -> ResultCode;
-  pub fn sqlite3_clear_bindings(sth: *stmt) -> ResultCode;
+    pub fn sqlite3_step(sth: *stmt) -> ResultCode;
+    pub fn sqlite3_reset(sth: *stmt) -> ResultCode;
+    pub fn sqlite3_finalize(sth: *stmt) -> ResultCode;
+    pub fn sqlite3_clear_bindings(sth: *stmt) -> ResultCode;
 
-  pub fn sqlite3_column_name(sth: *stmt, icol: c_int) -> *c_char;
-  pub fn sqlite3_column_type(sth: *stmt, icol: c_int) -> c_int;
-  pub fn sqlite3_data_count(sth: *stmt) -> c_int;
-  pub fn sqlite3_column_bytes(sth: *stmt, icol: c_int) -> c_int;
-  pub fn sqlite3_column_blob(sth: *stmt, icol: c_int) -> *u8;
+    pub fn sqlite3_column_name(sth: *stmt, icol: c_int) -> *c_char;
+    pub fn sqlite3_column_type(sth: *stmt, icol: c_int) -> c_int;
+    pub fn sqlite3_data_count(sth: *stmt) -> c_int;
+    pub fn sqlite3_column_bytes(sth: *stmt, icol: c_int) -> c_int;
+    pub fn sqlite3_column_blob(sth: *stmt, icol: c_int) -> *u8;
 
-  pub fn sqlite3_column_text(sth: *stmt, icol: c_int) -> *c_char;
-  pub fn sqlite3_column_double(sth: *stmt, icol: c_int) -> f64;
-  pub fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
+    pub fn sqlite3_column_text(sth: *stmt, icol: c_int) -> *c_char;
+    pub fn sqlite3_column_double(sth: *stmt, icol: c_int) -> f64;
+    pub fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
 
-  pub fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> ResultCode;
-  pub fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> ResultCode;
-  pub fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> ResultCode;
-  pub fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> ResultCode;
-  pub fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: f64) -> ResultCode;
-  pub fn sqlite3_bind_parameter_index(sth: *stmt, name: *c_char) -> c_int;
+    pub fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> ResultCode;
+    pub fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> ResultCode;
+    pub fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> ResultCode;
+    pub fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> ResultCode;
+    pub fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: f64) -> ResultCode;
+    pub fn sqlite3_bind_parameter_index(sth: *stmt, name: *c_char) -> c_int;
 
-  pub fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> ResultCode;
+    pub fn sqlite3_busy_timeout(dbh: *dbh, ms: c_int) -> ResultCode;
 }

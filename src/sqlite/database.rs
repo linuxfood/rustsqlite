@@ -38,86 +38,86 @@ use types::*;
 
 /// The database connection.
 pub struct Database {
-  priv dbh: *dbh,
+    priv dbh: *dbh,
 }
 
 pub fn database_with_handle(dbh: *dbh) -> Database {
-  Database { dbh: dbh }
+    Database { dbh: dbh }
 }
 
 impl Drop for Database {
-  /// Closes the database connection.
-  /// See http://www.sqlite.org/c3ref/close.html
-  fn drop(&mut self) {
-    debug!("freeing dbh resource: {:?}", self.dbh);
-    unsafe {
-      sqlite3_close(self.dbh);
+    /// Closes the database connection.
+    /// See http://www.sqlite.org/c3ref/close.html
+    fn drop(&mut self) {
+        debug!("freeing dbh resource: {:?}", self.dbh);
+        unsafe {
+            sqlite3_close(self.dbh);
+        }
     }
-  }
 }
 
 impl Database {
 
-  /// Returns the error message of the the most recent call.
-  /// See http://www.sqlite.org/c3ref/errcode.html
-  pub fn get_errmsg(&self) -> ~str {
-    unsafe {
-      str::raw::from_c_str(sqlite3_errmsg(self.dbh))
+    /// Returns the error message of the the most recent call.
+    /// See http://www.sqlite.org/c3ref/errcode.html
+    pub fn get_errmsg(&self) -> ~str {
+        unsafe {
+            str::raw::from_c_str(sqlite3_errmsg(self.dbh))
+        }
     }
-  }
 
-  /// Prepares/compiles an SQL statement.
-  /// See http://www.sqlite.org/c3ref/prepare.html
-  pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
-    let new_stmt = ptr::null();
-    let r = sql.to_c_str().with_ref( |_sql| {
-      unsafe {
-        sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &new_stmt, ptr::null())
-      }
-    });
-    if r == SQLITE_OK {
-      debug!("created new stmt: {:?}", new_stmt);
-      Ok( cursor_with_statement(new_stmt))
-    } else {
-      Err(r)
+    /// Prepares/compiles an SQL statement.
+    /// See http://www.sqlite.org/c3ref/prepare.html
+    pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
+        let new_stmt = ptr::null();
+        let r = sql.to_c_str().with_ref( |_sql| {
+            unsafe {
+                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &new_stmt, ptr::null())
+            }
+        });
+        if r == SQLITE_OK {
+            debug!("created new stmt: {:?}", new_stmt);
+            Ok( cursor_with_statement(new_stmt))
+        } else {
+            Err(r)
+        }
     }
-  }
 
-  /// Executes an SQL statement.
-  /// See http://www.sqlite.org/c3ref/exec.html
-  pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
-    let mut r = SQLITE_ERROR;
-    sql.to_c_str().with_ref( |_sql| {
-      unsafe {
-        r = sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
-      }
-    });
+    /// Executes an SQL statement.
+    /// See http://www.sqlite.org/c3ref/exec.html
+    pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
+        let mut r = SQLITE_ERROR;
+        sql.to_c_str().with_ref( |_sql| {
+            unsafe {
+                r = sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
+            }
+        });
 
-    if r == SQLITE_OK { Ok(true) } else { Err(r) }
-  }
-
-  /// Returns the number of modified/inserted/deleted rows by the most recent
-  /// call.
-  /// See http://www.sqlite.org/c3ref/changes.html
-  pub fn get_changes(&self) -> int {
-    unsafe {
-      sqlite3_changes(self.dbh) as int
+        if r == SQLITE_OK { Ok(true) } else { Err(r) }
     }
-  }
 
-  /// Returns the ID of the last inserted row.
-  /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
-  pub fn get_last_insert_rowid(&self) -> i64 {
-    unsafe {
-      sqlite3_last_insert_rowid(self.dbh)
+    /// Returns the number of modified/inserted/deleted rows by the most recent
+    /// call.
+    /// See http://www.sqlite.org/c3ref/changes.html
+    pub fn get_changes(&self) -> int {
+        unsafe {
+            sqlite3_changes(self.dbh) as int
+        }
     }
-  }
 
-  /// Sets a busy timeout.
-  /// See http://www.sqlite.org/c3ref/busy_timeout.html
-  pub fn set_busy_timeout(&self, ms: int) -> ResultCode {
-    unsafe {
-      sqlite3_busy_timeout(self.dbh, ms as c_int)
+    /// Returns the ID of the last inserted row.
+    /// See http://www.sqlite.org/c3ref/last_insert_rowid.html
+    pub fn get_last_insert_rowid(&self) -> i64 {
+        unsafe {
+            sqlite3_last_insert_rowid(self.dbh)
+        }
     }
-  }
+
+    /// Sets a busy timeout.
+    /// See http://www.sqlite.org/c3ref/busy_timeout.html
+    pub fn set_busy_timeout(&self, ms: int) -> ResultCode {
+        unsafe {
+            sqlite3_busy_timeout(self.dbh, ms as c_int)
+        }
+    }
 }
