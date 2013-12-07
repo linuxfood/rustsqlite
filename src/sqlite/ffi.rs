@@ -32,7 +32,7 @@
 use std::libc::*;
 use types::*;
 
-#[link_args="-lsqlite3"]
+#[link(name = "sqlite3")]
 extern {
   pub fn sqlite3_open(path: *c_char, hnd: **dbh) -> ResultCode;
   pub fn sqlite3_close(dbh: *dbh) -> ResultCode;
