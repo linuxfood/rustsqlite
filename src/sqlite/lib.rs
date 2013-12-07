@@ -78,7 +78,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
     if r != SQLITE_OK {
         Err(r)
     } else {
-        debug!("created new dbh: {:?}", dbh);
+        debug!("`open()`: dbh={:?}", dbh);
         Ok(database_with_handle(dbh))
     }
 }
@@ -127,7 +127,7 @@ mod tests {
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
         let sth = checked_prepare(database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
-        debug!("prepare_insert_stmt step res: {:?}", res);
+        debug!("test `prepare_insert_stmt`: res={:?}", res);
     }
 
     #[test]
@@ -174,7 +174,7 @@ mod tests {
 
         let sth = checked_prepare(database, "INSERT INTO test (name) VALUES (?)");
 
-        println!("`prepared_stmt_bind_text()` currently segfaults here:");
+        println!("test `prepared_stmt_bind_text()` currently segfaults here:");
         assert!(sth.bind_param(1, &Text(~"test")) == SQLITE_OK);
     }
 
@@ -232,7 +232,7 @@ mod tests {
             COMMIT;
             "
         );
-        debug!("last insert_id: {}", (database.get_last_insert_rowid() as u64).to_str() );
+        debug!("test `last insert_id`: {}", (database.get_last_insert_rowid() as u64).to_str() );
         assert!(database.get_last_insert_rowid() == 1_i64);
     }
 

@@ -237,12 +237,12 @@ impl Cursor {
         let r = match *value {
             Text(ref v) => {
                 let l = v.len() + 1;
+                debug!("  `Text`: v={:?}, l={:?}", v, l);
 
-                debug!("`Text`: v={:?}, l={:?}", v, l);
-
-                (*v).to_c_str().with_ref( |_v| {
-                    // FIXME: do not copy the data
+                (*v).with_c_str( |_v| {
+                    debug!("  _v={:?}", _v);
                     unsafe {
+                        // FIXME: do not copy the data
                         sqlite3_bind_text(
                               self.stmt   // the SQL statement
                             , i as c_int  // the SQL parameter index (starting from 1)
@@ -256,11 +256,10 @@ impl Cursor {
 
             Blob(ref v) => {
                 let l = v.len();
-
                 debug!("`Blob`: v={:?}, l={:?}", v, l);
 
-                // FIXME: do not copy the data
                 unsafe {
+                    // FIXME: do not copy the data
                     sqlite3_bind_blob(
                           self.stmt            // the SQL statement
                         , i as c_int           // the SQL parameter index (starting from 1)
