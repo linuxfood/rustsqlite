@@ -261,11 +261,11 @@ impl Cursor {
                 unsafe {
                     // FIXME: do not copy the data
                     sqlite3_bind_blob(
-                          self.stmt            // the SQL statement
-                        , i as c_int           // the SQL parameter index (starting from 1)
-                        , vec::raw::to_ptr(*v) // the value to bind
-                        , l as c_int           // the number of bytes
-                        , -1 as c_int          // SQLITE_TRANSIENT => SQLite makes a copy
+                          self.stmt   // the SQL statement
+                        , i as c_int  // the SQL parameter index (starting from 1)
+                        , v.as_ptr()  // the value to bind
+                        , l as c_int  // the number of bytes
+                        , -1 as c_int // SQLITE_TRANSIENT => SQLite makes a copy
                         )
                 }
             }
