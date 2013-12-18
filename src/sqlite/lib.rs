@@ -1,4 +1,4 @@
-#[link(name = "sqlite", package_id = "sqlite", vers = "0.1")];
+#[pkgid="sqlite#0.1"];
 #[crate_type = "lib"];
 #[feature(globs)];
 
