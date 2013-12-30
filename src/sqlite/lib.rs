@@ -1,4 +1,4 @@
-#[pkgid="sqlite#0.1"];
+#[crate_id="sqlite#0.1"];
 #[crate_type = "lib"];
 #[feature(globs)];
 
