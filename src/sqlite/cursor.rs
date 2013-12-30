@@ -165,7 +165,9 @@ impl Cursor {
     pub fn get_bind_index(&self, name: &str) -> int {
         let stmt = self.stmt;
         unsafe {
-            return sqlite3_bind_parameter_index(stmt, name.to_c_str().unwrap()) as int;
+            name.with_c_str( |_name| {
+              return sqlite3_bind_parameter_index(stmt, _name) as int
+            })
         }
     }
 
