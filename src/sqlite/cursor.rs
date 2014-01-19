@@ -148,6 +148,14 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
+    pub fn get_i64(&self, i: int) -> i64 {
+        unsafe {
+            return sqlite3_column_int64(self.stmt, i as c_int) as i64;
+        }
+    }
+
+    ///
+    /// See http://www.sqlite.org/c3ref/column_blob.html
     pub fn get_num(&self, i: int) -> f64 {
         unsafe {
             return sqlite3_column_double(self.stmt, i as c_int);
@@ -275,6 +283,8 @@ impl<'db> Cursor<'db> {
             }
 
             Integer(ref v) => { unsafe { sqlite3_bind_int(self.stmt, i as c_int, *v as c_int) } }
+
+            Integer64(ref v) => { unsafe { sqlite3_bind_int64(self.stmt, i as c_int, *v) } }
 
             Number(ref v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, *v) } }
 

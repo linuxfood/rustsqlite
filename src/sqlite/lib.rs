@@ -167,6 +167,23 @@ mod tests {
     }
 
     #[test]
+    fn prepared_stmt_bind_i64() {
+        let database = checked_open();
+
+        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+
+        checked_exec(&database,
+            "INSERT OR IGNORE INTO test (id) VALUES(0);
+             INSERT OR IGNORE INTO test (id) VALUES(1234567890123456);"
+        );
+        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ?");
+        assert!(sth.bind_param(1, &Integer64(1234567890120000)) == SQLITE_OK);
+
+        assert!(sth.step() == SQLITE_ROW);
+        assert!(sth.get_i64(0) == 1234567890123456);
+    }
+
+    #[test]
     fn prepared_stmt_bind_text() {
         let database = checked_open();
 

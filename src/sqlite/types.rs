@@ -107,6 +107,7 @@ pub enum BindArg {
     Text(~str),
     Number(f64),
     Integer(int),
+    Integer64(i64),
     Blob(~[u8]),
     Null,
 }
