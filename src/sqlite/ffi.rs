@@ -66,8 +66,8 @@ extern {
     pub fn sqlite3_column_double(sth: *stmt, icol: c_int) -> f64;
     pub fn sqlite3_column_int(sth: *stmt, icol: c_int) -> c_int;
 
-    pub fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: c_int) -> ResultCode;
-    pub fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: c_int) -> ResultCode;
+    pub fn sqlite3_bind_blob(sth: *stmt, icol: c_int, buf: *u8, buflen: c_int, d: *c_void) -> ResultCode;
+    pub fn sqlite3_bind_text(sth: *stmt, icol: c_int, buf: *c_char, buflen: c_int, d: *c_void) -> ResultCode;
     pub fn sqlite3_bind_null(sth: *stmt, icol: c_int) -> ResultCode;
     pub fn sqlite3_bind_int(sth: *stmt, icol: c_int, v: c_int) -> ResultCode;
     pub fn sqlite3_bind_double(sth: *stmt, icol: c_int, value: f64) -> ResultCode;

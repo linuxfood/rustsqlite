@@ -238,7 +238,7 @@ impl Cursor {
 
         let r = match *value {
             Text(ref v) => {
-                let l = v.len() + 1;
+                let l = v.len();
                 debug!("  `Text`: v={:?}, l={:?}", v, l);
 
                 (*v).with_c_str( |_v| {
@@ -250,7 +250,7 @@ impl Cursor {
                             , i as c_int  // the SQL parameter index (starting from 1)
                             , _v          // the value to bind
                             , l as c_int  // the number of bytes
-                            , -1 as c_int // SQLITE_TRANSIENT => SQLite makes a copy
+                            , -1 as *c_void// SQLITE_TRANSIENT => SQLite makes a copy
                             )
                     }
                 })
@@ -267,7 +267,7 @@ impl Cursor {
                         , i as c_int  // the SQL parameter index (starting from 1)
                         , v.as_ptr()  // the value to bind
                         , l as c_int  // the number of bytes
-                        , -1 as c_int // SQLITE_TRANSIENT => SQLite makes a copy
+                        , -1 as *c_void // SQLITE_TRANSIENT => SQLite makes a copy
                         )
                 }
             }
