@@ -90,7 +90,7 @@ mod tests {
     use super::*;
     use types::*;
 
-    fn checked_prepare(database: Database, sql: &str) -> Cursor {
+    fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
             Ok(s)  => s,
             Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
@@ -125,7 +125,7 @@ mod tests {
         let database = checked_open();
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
-        let sth = checked_prepare(database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
+        let sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
         debug!("test `prepare_insert_stmt`: res={:?}", res);
     }
@@ -141,7 +141,7 @@ mod tests {
             COMMIT;"
         );
 
-        let sth = checked_prepare(database, "SELECT id FROM test WHERE id = 1;");
+        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_int(0) == 1);
         assert!(sth.step() == SQLITE_DONE);
@@ -158,7 +158,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id) VALUES(3);
                 INSERT OR IGNORE INTO test (id) VALUES(4);"
         );
-        let sth = checked_prepare(database, "SELECT id FROM test WHERE id > ? AND id < ?");
+        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ? AND id < ?");
         assert!(sth.bind_param(1, &Integer(2)) == SQLITE_OK);
         assert!(sth.bind_param(2, &Integer(4)) == SQLITE_OK);
 
@@ -172,7 +172,7 @@ mod tests {
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
 
-        let sth = checked_prepare(database, "INSERT INTO test (name) VALUES (?)");
+        let sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
 
         assert!(sth.bind_param(1, &Text(~"test")) == SQLITE_OK);
     }
@@ -187,7 +187,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
                 COMMIT;"
         );
-        let sth = checked_prepare(database, "SELECT * FROM test");
+        let sth = checked_prepare(&database, "SELECT * FROM test");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_column_names() == ~[~"id", ~"v"]);
     }
@@ -203,7 +203,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
                 COMMIT;"
         );
-        let _sth = checked_prepare(database, "SELECT q FRO test");
+        let _sth = checked_prepare(&database, "SELECT q FRO test");
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
                 COMMIT;"
         );
-        let sth = checked_prepare(database, "SELECT * FROM test WHERE v=:Name");
+        let sth = checked_prepare(&database, "SELECT * FROM test WHERE v=:Name");
         assert!(sth.get_bind_index(":Name") == 1);
     }
 
@@ -248,7 +248,7 @@ mod tests {
             COMMIT;
             "
         );
-        let sth = checked_prepare(database, "SELECT * FROM test WHERE id=2");
+        let sth = checked_prepare(&database, "SELECT * FROM test WHERE id=2");
         let r = sth.step_row();
         let possible_row = r.unwrap();
         match possible_row {

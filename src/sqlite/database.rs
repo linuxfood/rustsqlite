@@ -68,7 +68,7 @@ impl Database {
 
     /// Prepares/compiles an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
-    pub fn prepare(&self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor> {
+    pub fn prepare<'db>(&'db self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor<'db>> {
         let new_stmt = ptr::null();
         let r = sql.with_c_str( |_sql| {
             unsafe {
@@ -77,7 +77,7 @@ impl Database {
         });
         if r == SQLITE_OK {
             debug!("`Database.prepare()`: stmt={:?}", new_stmt);
-            Ok( cursor_with_statement(new_stmt))
+            Ok( cursor_with_statement(new_stmt, &self.dbh))
         } else {
             Err(r)
         }

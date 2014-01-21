@@ -37,16 +37,18 @@ use std::vec;
 use types::*;
 
 /// The database cursor.
-pub struct Cursor {
+pub struct Cursor<'db> {
     priv stmt: *stmt,
+    priv dbh: &'db *dbh
 }
 
-pub fn cursor_with_statement(stmt: *stmt) -> Cursor {
+pub fn cursor_with_statement<'db>(stmt: *stmt, dbh: &'db *dbh) -> Cursor<'db> {
     debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
-    Cursor { stmt: stmt }
+    Cursor { stmt: stmt, dbh: dbh }
 }
 
-impl Drop for Cursor {
+#[unsafe_destructor]
+impl<'db> Drop for Cursor<'db> {
     /// Deletes a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/finalize.html
     fn drop(&mut self) {
@@ -57,7 +59,7 @@ impl Drop for Cursor {
     }
 }
 
-impl Cursor {
+impl<'db> Cursor<'db> {
 
     /// Resets a prepared SQL statement, but does not reset its bindings.
     /// See http://www.sqlite.org/c3ref/reset.html
