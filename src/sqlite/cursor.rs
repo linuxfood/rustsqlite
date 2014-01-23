@@ -266,6 +266,24 @@ impl<'db> Cursor<'db> {
                 })
             }
 
+            StaticText(ref v) => {
+                let l = v.len();
+                debug!("  `StaticText`: v={:?}, l={:?}", v, l);
+
+                (*v).with_c_str( |_v| {
+                    debug!("  _v={:?}", _v);
+                    unsafe {
+                        sqlite3_bind_text(
+                              self.stmt   // the SQL statement
+                            , i as c_int  // the SQL parameter index (starting from 1)
+                            , _v          // the value to bind
+                            , l as c_int  // the number of bytes
+                            , 0 as *c_void// SQLITE_STATIC
+                            )
+                    }
+                })
+            }
+
             Blob(ref v) => {
                 let l = v.len();
                 debug!("`Blob`: v={:?}, l={:?}", v, l);
