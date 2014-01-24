@@ -1,4 +1,4 @@
-#[crate_id="sqlite#0.1"];
+#[crate_id="sqlite3#0.1"];
 #[crate_type = "lib"];
 #[feature(globs)];
 
@@ -163,7 +163,7 @@ mod tests {
         assert!(sth.bind_param(2, &Integer(4)) == SQLITE_OK);
 
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_num(0) as int == 3);
+        assert!(sth.get_f64(0) as int == 3);
     }
 
     #[test]
@@ -284,7 +284,7 @@ mod tests {
                 let mut x = x;
                 assert!(x.pop(&~"id") == Some(Integer(2)));
                 assert!(x.pop(&~"k")  == Some(Text(~"e")));
-                assert!(x.pop(&~"v")  == Some(Number(2.17)));
+                assert!(x.pop(&~"v")  == Some(Float64(2.17)));
             }
             None => {
                 fail!("didnt get even one row back.");

@@ -106,7 +106,7 @@ impl to_str::ToStr for ResultCode {
 pub enum BindArg {
     Text(~str),
     StaticText(&'static str),
-    Number(f64),
+    Float64(f64),
     Integer(int),
     Integer64(i64),
     Blob(~[u8]),

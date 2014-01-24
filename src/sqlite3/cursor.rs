@@ -97,7 +97,7 @@ impl<'db> Cursor<'db> {
                 let coltype = self.get_column_type(i);
                 let res = match coltype {
                     SQLITE_INTEGER => sqlrow.insert(name, Integer(self.get_int(i))),
-                    SQLITE_FLOAT   => sqlrow.insert(name, Number(self.get_num(i))),
+                    SQLITE_FLOAT   => sqlrow.insert(name, Float64(self.get_f64(i))),
                     SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i))),
                     SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i))),
                     SQLITE_NULL    => sqlrow.insert(name, Null),
@@ -156,7 +156,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_num(&self, i: int) -> f64 {
+    pub fn get_f64(&self, i: int) -> f64 {
         unsafe {
             return sqlite3_column_double(self.stmt, i as c_int);
         }
@@ -304,7 +304,7 @@ impl<'db> Cursor<'db> {
 
             Integer64(ref v) => { unsafe { sqlite3_bind_int64(self.stmt, i as c_int, *v) } }
 
-            Number(ref v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, *v) } }
+            Float64(ref v) => { unsafe { sqlite3_bind_double(self.stmt, i as c_int, *v) } }
 
             Null => { unsafe { sqlite3_bind_null(self.stmt, i as c_int) } }
 
