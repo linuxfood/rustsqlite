@@ -195,6 +195,17 @@ mod tests {
     }
 
     #[test]
+    fn prepared_stmt_bind_static_text() {
+        let database = checked_open();
+
+        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
+
+        let sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
+
+        assert!(sth.bind_param(1, &StaticText("test")) == SQLITE_OK);
+    }
+
+    #[test]
     fn column_names() {
         let database = checked_open();
 

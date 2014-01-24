@@ -105,6 +105,7 @@ impl to_str::ToStr for ResultCode {
 #[deriving(Eq)]
 pub enum BindArg {
     Text(~str),
+    StaticText(&'static str),
     Number(f64),
     Integer(int),
     Integer64(i64),
