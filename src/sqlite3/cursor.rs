@@ -92,7 +92,7 @@ impl<'db> Cursor<'db> {
             let column_cnt = self.get_column_count();
             let mut i = 0;
             let mut sqlrow = HashMap::new();
-            while( i < column_cnt ) {
+            while i < column_cnt {
                 let name = self.get_column_name(i);
                 let coltype = self.get_column_type(i);
                 let res = match coltype {
@@ -220,7 +220,7 @@ impl<'db> Cursor<'db> {
         let cnt = self.get_column_count();
         let mut i = 0;
         let mut r = ~[];
-        while(i < cnt){
+        while i < cnt {
             r.push(self.get_column_name(i));
             i += 1;
         }
