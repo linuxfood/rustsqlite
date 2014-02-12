@@ -6,4 +6,4 @@ install:
 notifications:
   email: false
 script:
-  - rustpkg build sqlite3
+  - rustc src/sqlite3/lib.rs

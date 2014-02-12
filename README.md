@@ -3,7 +3,7 @@
 [<img src="https://travis-ci.org/kud1ing/rustsqlite.png?branch=master">](https://travis-ci.org/kud1ing/rustsqlite)
 
 
-`rustpkg install github.com/linuxfood/rustsqlite`.
+`rustc src/sqlite3/lib.rs`
 
 The interface is currently evolving both along with Rust and as I think of
 better ways to implement various behaviors. If you have ideas about better
