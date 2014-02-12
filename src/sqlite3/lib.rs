@@ -33,7 +33,6 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-extern mod extra;
 use database::*;
 use ffi::*;
 use types::*;
