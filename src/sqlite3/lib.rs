@@ -33,9 +33,9 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use database::*;
+pub use database::*;
 use ffi::*;
-use types::*;
+pub use types::*;
 use std::ptr;
 
 pub mod cursor;
