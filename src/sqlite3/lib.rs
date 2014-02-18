@@ -75,6 +75,9 @@ pub fn open(path: &Path) -> SqliteResult<Database> {
         }
     });
     if r != SQLITE_OK {
+        unsafe {
+            sqlite3_close(dbh);
+        }
         Err(r)
     } else {
         debug!("`open()`: dbh={:?}", dbh);
