@@ -67,7 +67,7 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 
 /// Opens a new database connection.
 /// See http://www.sqlite.org/c3ref/open.html
-pub fn open(path: &str) -> SqliteResult<Database> {
+pub fn open(path: &Path) -> SqliteResult<Database> {
     let dbh = ptr::null();
     let r = path.with_c_str( |_path| {
         unsafe {
