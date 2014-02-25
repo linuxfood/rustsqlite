@@ -33,6 +33,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+pub use cursor::*;
 pub use database::*;
 use ffi::*;
 pub use types::*;
