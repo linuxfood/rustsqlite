@@ -31,7 +31,7 @@
 
 use ffi::*;
 use std::libc::*;
-use std::hashmap::HashMap;
+use collections::hashmap::HashMap;
 use std::str;
 use std::vec;
 use types::*;

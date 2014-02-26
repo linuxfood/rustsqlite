@@ -29,8 +29,8 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use std::hashmap::HashMap;
 use std::to_str;
+use collections::hashmap::HashMap;
 
 #[deriving(Eq)]
 #[repr(C)]
