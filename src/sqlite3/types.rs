@@ -29,8 +29,8 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use std::to_str;
 use collections::hashmap::HashMap;
+use std::fmt;
 
 #[deriving(Eq)]
 #[repr(C)]
@@ -66,39 +66,39 @@ pub enum ResultCode {
     SQLITE_DONE       = 101,
 }
 
-impl to_str::ToStr for ResultCode {
-    fn to_str(&self) -> ~str {
-        match *self {
-            SQLITE_OK => ~"Ok",
-            SQLITE_ERROR => ~"SQLITE_ERROR",
-            SQLITE_INTERNAL => ~"SQLITE_INTERNAL",
-            SQLITE_PERM => ~"SQLITE_PERM",
-            SQLITE_ABORT => ~"SQLITE_ABORT",
-            SQLITE_BUSY => ~"SQLITE_BUSY",
-            SQLITE_LOCKED => ~"SQLITE_LOCKED",
-            SQLITE_NOMEM => ~"SQLITE_NOMEM",
-            SQLITE_READONLY => ~"SQLITE_READONLY",
-            SQLITE_INTERRUPT => ~"SQLITE_INTERRUPT",
-            SQLITE_IOERR => ~"SQLITE_IOERR",
-            SQLITE_CORRUPT => ~"SQLITE_CORRUPT",
-            SQLITE_NOTFOUND => ~"SQLITE_NOTFOUND",
-            SQLITE_FULL => ~"SQLITE_FULL",
-            SQLITE_CANTOPEN => ~"SQLITE_CANTOPEN",
-            SQLITE_PROTOCOL => ~"SQLITE_PROTOCOL",
-            SQLITE_EMPTY => ~"SQLITE_EMPTY",
-            SQLITE_SCHEMA => ~"SQLITE_SCHEMA",
-            SQLITE_TOOBIG => ~"SQLITE_TOOBIG",
-            SQLITE_CONSTRAINT => ~"SQLITE_CONSTRAINT",
-            SQLITE_MISMATCH => ~"SQLITE_MISMATCH",
-            SQLITE_MISUSE => ~"SQLITE_MISUSE",
-            SQLITE_NOLFS => ~"SQLITE_NOLFS",
-            SQLITE_AUTH => ~"SQLITE_AUTH",
-            SQLITE_FORMAT => ~"SQLITE_FORMAT",
-            SQLITE_RANGE => ~"SQLITE_RANGE",
-            SQLITE_NOTADB => ~"SQLITE_NOTADB",
-            SQLITE_ROW => ~"SQLITE_ROW",
-            SQLITE_DONE => ~"SQLITE_DONE",
-        }
+impl fmt::Show for ResultCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write(match *self {
+            SQLITE_OK => "Ok".as_bytes(),
+            SQLITE_ERROR => "SQLITE_ERROR".as_bytes(),
+            SQLITE_INTERNAL => "SQLITE_INTERNAL".as_bytes(),
+            SQLITE_PERM => "SQLITE_PERM".as_bytes(),
+            SQLITE_ABORT => "SQLITE_ABORT".as_bytes(),
+            SQLITE_BUSY => "SQLITE_BUSY".as_bytes(),
+            SQLITE_LOCKED => "SQLITE_LOCKED".as_bytes(),
+            SQLITE_NOMEM => "SQLITE_NOMEM".as_bytes(),
+            SQLITE_READONLY => "SQLITE_READONLY".as_bytes(),
+            SQLITE_INTERRUPT => "SQLITE_INTERRUPT".as_bytes(),
+            SQLITE_IOERR => "SQLITE_IOERR".as_bytes(),
+            SQLITE_CORRUPT => "SQLITE_CORRUPT".as_bytes(),
+            SQLITE_NOTFOUND => "SQLITE_NOTFOUND".as_bytes(),
+            SQLITE_FULL => "SQLITE_FULL".as_bytes(),
+            SQLITE_CANTOPEN => "SQLITE_CANTOPEN".as_bytes(),
+            SQLITE_PROTOCOL => "SQLITE_PROTOCOL".as_bytes(),
+            SQLITE_EMPTY => "SQLITE_EMPTY".as_bytes(),
+            SQLITE_SCHEMA => "SQLITE_SCHEMA".as_bytes(),
+            SQLITE_TOOBIG => "SQLITE_TOOBIG".as_bytes(),
+            SQLITE_CONSTRAINT => "SQLITE_CONSTRAINT".as_bytes(),
+            SQLITE_MISMATCH => "SQLITE_MISMATCH".as_bytes(),
+            SQLITE_MISUSE => "SQLITE_MISUSE".as_bytes(),
+            SQLITE_NOLFS => "SQLITE_NOLFS".as_bytes(),
+            SQLITE_AUTH => "SQLITE_AUTH".as_bytes(),
+            SQLITE_FORMAT => "SQLITE_FORMAT".as_bytes(),
+            SQLITE_RANGE => "SQLITE_RANGE".as_bytes(),
+            SQLITE_NOTADB => "SQLITE_NOTADB".as_bytes(),
+            SQLITE_ROW => "SQLITE_ROW".as_bytes(),
+            SQLITE_DONE => "SQLITE_DONE".as_bytes(),
+        })
     }
 }
 
