@@ -33,6 +33,8 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+extern crate collections;
+
 pub use cursor::*;
 pub use database::*;
 use ffi::*;
