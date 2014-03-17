@@ -45,6 +45,8 @@ use std::ptr;
 pub mod cursor;
 pub mod database;
 mod ffi;
+
+#[allow(non_camel_case_types)]
 pub mod types;
 
 
