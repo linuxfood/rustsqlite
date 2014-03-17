@@ -1,6 +1,7 @@
 #[crate_id="sqlite3#0.1"];
 #[crate_type = "lib"];
-#[feature(globs)];
+#[feature(globs, phase)];
+#[phase(syntax, link)] extern crate log;
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
