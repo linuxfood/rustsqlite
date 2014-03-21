@@ -33,7 +33,7 @@ use ffi::*;
 use std::libc::*;
 use collections::hashmap::HashMap;
 use std::str;
-use std::vec;
+use std::slice;
 use types::*;
 
 /// The database cursor.
@@ -130,7 +130,7 @@ impl<'db> Cursor<'db> {
     pub fn get_blob(&self, i: int) -> ~[u8] {
         let len    = self.get_bytes(i);
         unsafe {
-            let bytes = vec::raw::from_buf_raw(
+            let bytes = slice::raw::from_buf_raw(
                 sqlite3_column_blob(self.stmt, i as c_int),
                 len as uint
             );
