@@ -38,8 +38,8 @@ use types::*;
 
 /// The database cursor.
 pub struct Cursor<'db> {
-    priv stmt: *stmt,
-    priv dbh: &'db *dbh
+    stmt: *stmt,
+    dbh: &'db *dbh
 }
 
 pub fn cursor_with_statement<'db>(stmt: *stmt, dbh: &'db *dbh) -> Cursor<'db> {

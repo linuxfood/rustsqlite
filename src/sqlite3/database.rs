@@ -38,7 +38,7 @@ use types::*;
 
 /// The database connection.
 pub struct Database {
-    priv dbh: *dbh,
+    dbh: *dbh,
 }
 
 pub fn database_with_handle(dbh: *dbh) -> Database {

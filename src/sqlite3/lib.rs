@@ -1,6 +1,6 @@
-#[crate_id="sqlite3#0.1"];
-#[crate_type = "lib"];
-#[feature(globs, phase)];
+#![crate_id="sqlite3#0.1"]
+#![crate_type = "lib"]
+#![feature(globs, phase)]
 #[phase(syntax, link)] extern crate log;
 
 /*
