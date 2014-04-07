@@ -29,7 +29,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use std::libc::*;
+use libc::*;
 use types::*;
 
 #[link(name = "sqlite3")]
