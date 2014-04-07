@@ -31,7 +31,7 @@
 
 use cursor::*;
 use ffi::*;
-use std::libc::*;
+use libc::c_int;
 use std::ptr;
 use std::str;
 use types::*;

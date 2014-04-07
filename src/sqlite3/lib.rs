@@ -34,6 +34,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
+extern crate libc;
 extern crate collections;
 
 pub use cursor::*;

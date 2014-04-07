@@ -30,7 +30,7 @@
 */
 
 use ffi::*;
-use std::libc::*;
+use libc::{c_int, c_void};
 use collections::hashmap::HashMap;
 use std::str;
 use std::slice;
