@@ -127,14 +127,12 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_blob(&self, i: int) -> ~[u8] {
+    pub fn get_blob(&self, i: int) -> Vec<u8> {
         let len    = self.get_bytes(i);
         unsafe {
-            let bytes = slice::raw::from_buf_raw(
-                sqlite3_column_blob(self.stmt, i as c_int),
-                len as uint
-            );
-            return bytes;
+            slice::raw::buf_as_slice(
+                sqlite3_column_blob(self.stmt, i as c_int), len as uint,
+                |bytes| Vec::from_slice(bytes))
         }
     }
 
@@ -216,10 +214,10 @@ impl<'db> Cursor<'db> {
     }
 
     /// Returns the names of all columns in the result set.
-    pub fn get_column_names(&self) -> ~[~str] {
+    pub fn get_column_names(&self) -> Vec<~str> {
         let cnt = self.get_column_count();
         let mut i = 0;
-        let mut r = ~[];
+        let mut r = Vec::new();
         while i < cnt {
             r.push(self.get_column_name(i));
             i += 1;

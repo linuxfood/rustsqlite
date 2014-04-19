@@ -109,7 +109,7 @@ pub enum BindArg {
     Float64(f64),
     Integer(int),
     Integer64(i64),
-    Blob(~[u8]),
+    Blob(Vec<u8>),
     Null,
 }
 
