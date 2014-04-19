@@ -115,8 +115,10 @@ mod tests {
     }
 
     fn checked_exec(database: &Database, sql: &str) {
-        let r = database.exec(sql);
-        assert!(r.is_ok());
+        match database.exec(sql) {
+            Ok(..) => {}
+            Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
+        }
     }
 
     #[test]
@@ -154,6 +156,23 @@ mod tests {
         let sth = checked_prepare(&database, "SELECT id FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_int(0) == 1);
+        assert!(sth.step() == SQLITE_DONE);
+    }
+
+    #[test]
+    fn prepare_select_stmt_blob() {
+        let database = checked_open();
+
+        checked_exec(&database,
+            "BEGIN;
+            CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
+            INSERT OR IGNORE INTO test (id, v) VALUES (1, x'00123456789abcdeff');
+            COMMIT;"
+        );
+
+        let sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
+        assert!(sth.step() == SQLITE_ROW);
+        assert!(sth.get_blob(0) == vec!(0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff));
         assert!(sth.step() == SQLITE_DONE);
     }
 
@@ -227,7 +246,7 @@ mod tests {
         );
         let sth = checked_prepare(&database, "SELECT * FROM test");
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_column_names() == ~[~"id", ~"v"]);
+        assert!(sth.get_column_names() == vec!(~"id", ~"v"));
     }
 
     #[test]
