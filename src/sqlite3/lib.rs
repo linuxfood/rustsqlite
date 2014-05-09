@@ -220,7 +220,7 @@ mod tests {
 
         let sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
 
-        assert!(sth.bind_param(1, &Text(~"test")) == SQLITE_OK);
+        assert!(sth.bind_param(1, &Text("test".to_owned())) == SQLITE_OK);
     }
 
     #[test]
@@ -246,7 +246,7 @@ mod tests {
         );
         let sth = checked_prepare(&database, "SELECT * FROM test");
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_column_names() == vec!(~"id", ~"v"));
+        assert!(sth.get_column_names() == vec!("id".to_owned(), "v".to_owned()));
     }
 
     #[test]
@@ -311,9 +311,9 @@ mod tests {
         match possible_row {
             Some(x) => {
                 let mut x = x;
-                assert!(x.pop(&~"id") == Some(Integer(2)));
-                assert!(x.pop(&~"k")  == Some(Text(~"e")));
-                assert!(x.pop(&~"v")  == Some(Float64(2.17)));
+                assert!(x.pop(&"id".to_owned()) == Some(Integer(2)));
+                assert!(x.pop(&"k".to_owned())  == Some(Text("e".to_owned())));
+                assert!(x.pop(&"v".to_owned())  == Some(Float64(2.17)));
             }
             None => {
                 fail!("didnt get even one row back.");
