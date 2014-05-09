@@ -6,4 +6,4 @@ install:
 notifications:
   email: false
 script:
-  - rustc src/sqlite3/lib.rs
+  - rustc --test src/sqlite3/lib.rs
