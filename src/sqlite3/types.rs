@@ -68,7 +68,7 @@ pub enum ResultCode {
 
 impl fmt::Show for ResultCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.buf.write(match *self {
+        f.write(match *self {
             SQLITE_OK => "Ok".as_bytes(),
             SQLITE_ERROR => "SQLITE_ERROR".as_bytes(),
             SQLITE_INTERNAL => "SQLITE_INTERNAL".as_bytes(),
