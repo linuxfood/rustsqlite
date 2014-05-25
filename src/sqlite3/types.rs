@@ -104,7 +104,7 @@ impl fmt::Show for ResultCode {
 
 #[deriving(Eq)]
 pub enum BindArg {
-    Text(StrBuf),
+    Text(String),
     StaticText(&'static str),
     Float64(f64),
     Integer(int),
@@ -123,7 +123,7 @@ pub enum ColumnType {
 
 pub type SqliteResult<T> = Result<T, ResultCode>;
 
-pub type RowMap = HashMap<StrBuf, BindArg>;
+pub type RowMap = HashMap<String, BindArg>;
 
 pub enum dbh {}
 pub enum stmt {}

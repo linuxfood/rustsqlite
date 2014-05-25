@@ -162,7 +162,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_text(&self, i: int) -> StrBuf {
+    pub fn get_text(&self, i: int) -> String {
         unsafe {
             return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
         }
@@ -189,7 +189,7 @@ impl<'db> Cursor<'db> {
 
     /// Returns the name of the column with index `i` in the result set.
     /// See http://www.sqlite.org/c3ref/column_name.html
-    pub fn get_column_name(&self, i: int) -> StrBuf {
+    pub fn get_column_name(&self, i: int) -> String {
         unsafe {
             return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
         }
@@ -214,7 +214,7 @@ impl<'db> Cursor<'db> {
     }
 
     /// Returns the names of all columns in the result set.
-    pub fn get_column_names(&self) -> Vec<StrBuf> {
+    pub fn get_column_names(&self) -> Vec<String> {
         let cnt = self.get_column_count();
         let mut i = 0;
         let mut r = Vec::new();
