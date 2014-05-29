@@ -2,6 +2,7 @@
 #![crate_type = "lib"]
 #![feature(globs, phase)]
 #[phase(syntax, link)] extern crate log;
+extern crate debug;
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
