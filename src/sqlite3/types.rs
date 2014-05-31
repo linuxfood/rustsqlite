@@ -32,7 +32,7 @@
 use collections::hashmap::HashMap;
 use std::fmt;
 
-#[deriving(Eq)]
+#[deriving(PartialEq, Eq)]
 #[repr(C)]
 pub enum ResultCode {
     SQLITE_OK         =  0,
@@ -102,7 +102,7 @@ impl fmt::Show for ResultCode {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum BindArg {
     Text(String),
     StaticText(&'static str),
