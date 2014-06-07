@@ -29,7 +29,7 @@
 ** POSSIBILITY OF SUCH DAMAGE.
 */
 
-use collections::hashmap::HashMap;
+use std::collections::HashMap;
 use std::fmt;
 
 #[deriving(PartialEq, Eq)]

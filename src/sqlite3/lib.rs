@@ -36,7 +36,6 @@ extern crate debug;
 */
 
 extern crate libc;
-extern crate collections;
 
 pub use cursor::*;
 pub use database::*;
