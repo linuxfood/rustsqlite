@@ -39,12 +39,12 @@ use types::*;
 /// The database cursor.
 pub struct Cursor<'db> {
     stmt: *stmt,
-    dbh: &'db *dbh
+    _dbh: &'db *dbh
 }
 
 pub fn cursor_with_statement<'db>(stmt: *stmt, dbh: &'db *dbh) -> Cursor<'db> {
     debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
-    Cursor { stmt: stmt, dbh: dbh }
+    Cursor { stmt: stmt, _dbh: dbh }
 }
 
 #[unsafe_destructor]
