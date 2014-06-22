@@ -1,7 +1,7 @@
 #![crate_id="sqlite3#0.1"]
 #![crate_type = "lib"]
-#![feature(globs, phase)]
-#[phase(syntax, link)] extern crate log;
+#![feature(globs, phase, unsafe_destructor)]
+#[phase(plugin, link)] extern crate log;
 extern crate debug;
 
 /*
