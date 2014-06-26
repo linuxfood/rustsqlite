@@ -1,0 +1,8 @@
+[package]
+name = "sqlite3"
+version = "0.1.0"
+authors = [ "" ]
+
+[[lib]]
+name = "sqlite3"
+path = "src/sqlite3/lib.rs"
