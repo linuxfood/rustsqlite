@@ -227,7 +227,8 @@ impl<'db> Cursor<'db> {
 
     ///
     pub fn bind_params(&self, values: &[BindArg]) -> ResultCode {
-        let mut i = 0i;
+        // SQL parameter index (starting from 1).
+        let mut i = 1i;
         for v in values.iter() {
             let r = self.bind_param(i, v);
             if r != SQLITE_OK {

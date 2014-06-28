@@ -224,6 +224,16 @@ mod tests {
     }
 
     #[test]
+    fn prepared_stmt_bind_params() {
+        let database = checked_open();
+
+        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text, id integer); COMMIT;");
+
+        let sth = checked_prepare(&database, "INSERT INTO TEST (name, id) values (?, ?)");
+        assert!(sth.bind_params(&[Integer(12345), Text("test".to_string())]) == SQLITE_OK);
+    }
+
+    #[test]
     fn prepared_stmt_bind_static_text() {
         let database = checked_open();
 
