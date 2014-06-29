@@ -76,10 +76,10 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 /// `path` can either be a filesystem path or ":memory:".
 /// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
-    let dbh = ptr::null();
+    let mut dbh = ptr::mut_null();
     let r = path.with_c_str( |_path| {
         unsafe {
-            sqlite3_open(_path, &dbh)
+            sqlite3_open(_path, &mut dbh)
         }
     });
     if r != SQLITE_OK {

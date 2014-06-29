@@ -2,3 +2,4 @@ libsqlite*
 *.o
 *.dSYM
 sqlite
+target

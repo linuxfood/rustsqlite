@@ -38,10 +38,10 @@ use types::*;
 
 /// The database connection.
 pub struct Database {
-    dbh: *dbh,
+    dbh: *mut dbh,
 }
 
-pub fn database_with_handle(dbh: *dbh) -> Database {
+pub fn database_with_handle(dbh: *mut dbh) -> Database {
     Database { dbh: dbh }
 }
 
@@ -69,10 +69,10 @@ impl Database {
     /// Prepares/compiles an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
     pub fn prepare<'db>(&'db self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor<'db>> {
-        let new_stmt = ptr::null();
+        let mut new_stmt = ptr::mut_null();
         let r = sql.with_c_str( |_sql| {
             unsafe {
-                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &new_stmt, ptr::null())
+                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &mut new_stmt, ptr::mut_null())
             }
         });
         if r == SQLITE_OK {
@@ -89,7 +89,7 @@ impl Database {
         let mut r = SQLITE_ERROR;
         sql.with_c_str( |_sql| {
             unsafe {
-                r = sqlite3_exec(self.dbh, _sql, ptr::null(), ptr::null(), ptr::null())
+                r = sqlite3_exec(self.dbh, _sql, ptr::mut_null(), ptr::mut_null(), ptr::mut_null())
             }
         });
 
