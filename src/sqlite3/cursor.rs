@@ -38,11 +38,11 @@ use types::*;
 
 /// The database cursor.
 pub struct Cursor<'db> {
-    stmt: *stmt,
-    _dbh: &'db *dbh
+    stmt: *mut stmt,
+    _dbh: &'db *mut dbh
 }
 
-pub fn cursor_with_statement<'db>(stmt: *stmt, dbh: &'db *dbh) -> Cursor<'db> {
+pub fn cursor_with_statement<'db>(stmt: *mut stmt, dbh: &'db *mut dbh) -> Cursor<'db> {
     debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
     Cursor { stmt: stmt, _dbh: dbh }
 }
@@ -258,7 +258,7 @@ impl<'db> Cursor<'db> {
                             , i as c_int  // the SQL parameter index (starting from 1)
                             , _v          // the value to bind
                             , l as c_int  // the number of bytes
-                            , -1 as *c_void// SQLITE_TRANSIENT => SQLite makes a copy
+                            , -1 as *mut c_void// SQLITE_TRANSIENT => SQLite makes a copy
                             )
                     }
                 })
@@ -276,7 +276,7 @@ impl<'db> Cursor<'db> {
                             , i as c_int  // the SQL parameter index (starting from 1)
                             , _v          // the value to bind
                             , l as c_int  // the number of bytes
-                            , 0 as *c_void// SQLITE_STATIC
+                            , 0 as *mut c_void// SQLITE_STATIC
                             )
                     }
                 })
@@ -293,7 +293,7 @@ impl<'db> Cursor<'db> {
                         , i as c_int  // the SQL parameter index (starting from 1)
                         , v.as_ptr()  // the value to bind
                         , l as c_int  // the number of bytes
-                        , -1 as *c_void // SQLITE_TRANSIENT => SQLite makes a copy
+                        , -1 as *mut c_void // SQLITE_TRANSIENT => SQLite makes a copy
                         )
                 }
             }
