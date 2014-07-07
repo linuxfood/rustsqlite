@@ -5,4 +5,3 @@ authors = [ "" ]
 
 [[lib]]
 name = "sqlite3"
-path = "src/sqlite3/lib.rs"
