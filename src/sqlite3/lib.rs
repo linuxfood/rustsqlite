@@ -1,4 +1,4 @@
-#![crate_id="sqlite3#0.1"]
+#![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 #![feature(globs, phase, unsafe_destructor)]
 #[phase(plugin, link)] extern crate log;
