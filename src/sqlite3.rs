@@ -110,7 +110,7 @@ mod tests {
     fn checked_open() -> Database {
         match open(":memory:") {
             Ok(database) => database,
-            Err(ref e) => fail!(e.to_str()),
+            Err(ref e) => fail!(e.to_string()),
         }
     }
 
@@ -298,7 +298,7 @@ mod tests {
             COMMIT;
             "
         );
-        debug!("test `last insert_id`: {}", (database.get_last_insert_rowid() as u64).to_str() );
+        debug!("test `last insert_id`: {}", (database.get_last_insert_rowid() as u64).to_string() );
         assert!(database.get_last_insert_rowid() == 1_i64);
     }
 
