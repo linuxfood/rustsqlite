@@ -1,9 +1,12 @@
 before_install:
-  - yes | sudo add-apt-repository ppa:hansjorg/rust
   - sudo apt-get update
 install:
   - sudo apt-get install rust-nightly sqlite3
+  - curl -s http://www.rust-lang.org/rustup.sh | sudo sh
+  - curl -O http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
+  - tar xf cargo-nightly-linux.tar.gz
 notifications:
   email: false
 script:
-  - rustc --test src/sqlite3.rs
+  - ./cargo-nightly/bin/cargo build --verbose
+  - ./cargo-nightly/bin/cargo test --verbose
