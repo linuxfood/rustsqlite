@@ -172,7 +172,7 @@ mod tests {
 
         let sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_blob(0) == vec!(0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff));
+        assert!(sth.get_blob(0) == Some([0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff].as_slice()));
         assert!(sth.step() == SQLITE_DONE);
     }
 
@@ -342,6 +342,21 @@ mod tests {
             assert!(r.is_ok());
             return r.unwrap() == v;
         }
+    }
+
+    #[test]
+    fn get_text_without_step() {
+        let db = checked_open();
+        let c = checked_prepare(&db, "select 1 + 1");
+        assert_eq!(c.get_text(0), None);
+    }
+
+    #[test]
+    fn get_text_on_bogus_col() {
+        let db = checked_open();
+        let c = checked_prepare(&db, "select 1 + 1");
+        c.step();
+        assert_eq!(c.get_text(1), None);
     }
 }
 
