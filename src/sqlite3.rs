@@ -298,7 +298,7 @@ mod tests {
             COMMIT;
             "
         );
-        debug!("test `last insert_id`: {}", (database.get_last_insert_rowid() as u64).to_string() );
+        debug!("test `last insert_id`: {}", database.get_last_insert_rowid());
         assert!(database.get_last_insert_rowid() == 1_i64);
     }
 
