@@ -32,8 +32,10 @@
 use ffi::*;
 use libc::{c_int, c_void};
 use std::collections::HashMap;
+use std::mem::transmute;
 use std::str;
 use std::slice;
+use std::c_str::CString;
 use types::*;
 
 /// The database cursor.
@@ -93,13 +95,13 @@ impl<'db> Cursor<'db> {
             let mut i = 0;
             let mut sqlrow = HashMap::new();
             while i < column_cnt {
-                let name = self.get_column_name(i);
+                let name = self.get_column_name(i).to_string();
                 let coltype = self.get_column_type(i);
                 let res = match coltype {
                     SQLITE_INTEGER => sqlrow.insert(name, Integer(self.get_int(i))),
                     SQLITE_FLOAT   => sqlrow.insert(name, Float64(self.get_f64(i))),
-                    SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i))),
-                    SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i))),
+                    SQLITE_TEXT    => sqlrow.insert(name, Text(self.get_text(i).unwrap().to_string())),
+                    SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i).unwrap().to_vec())),
                     SQLITE_NULL    => sqlrow.insert(name, Null),
                 };
                 if res == false {
@@ -119,20 +121,14 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_bytes(&self, i: int) -> int {
-        unsafe {
-            sqlite3_column_bytes(self.stmt, i as c_int) as int
-        }
-    }
-
-    ///
-    /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_blob(&self, i: int) -> Vec<u8> {
-        let len    = self.get_bytes(i);
-        unsafe {
-            slice::raw::buf_as_slice(
-                sqlite3_column_blob(self.stmt, i as c_int), len as uint,
-                |bytes| Vec::from_slice(bytes))
+    pub fn get_blob<'a>(&'a self, i: int) -> Option<&'a [u8]> {
+        let ptr = unsafe {sqlite3_column_blob(self.stmt, i as c_int)};
+        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
+        if ptr.is_null() {
+            None
+        } else {
+            // make `bytes` outlive the `buf_as_slice` call
+            unsafe {slice::raw::buf_as_slice(ptr, len, |bytes: &[u8]| Some(transmute(bytes)))}
         }
     }
 
@@ -162,9 +158,18 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_text(&self, i: int) -> String {
-        unsafe {
-            return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
+    pub fn get_text<'a>(&'a self, i: int) -> Option<&'a str> {
+        let ptr = unsafe {sqlite3_column_text(self.stmt, i as c_int)};
+        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
+        if ptr.is_null() {
+            None
+        } else {
+            unsafe {
+                slice::raw::buf_as_slice(ptr as *const u8, len, |bytes| {
+                    let text: &str = str::raw::from_utf8(bytes);
+                    Some(transmute(text)) // make `text` outlive the `buf_as_slice` call
+                })
+            }
         }
     }
 
@@ -189,9 +194,11 @@ impl<'db> Cursor<'db> {
 
     /// Returns the name of the column with index `i` in the result set.
     /// See http://www.sqlite.org/c3ref/column_name.html
-    pub fn get_column_name(&self, i: int) -> String {
+    pub fn get_column_name<'a>(&'a self, i: int) -> &'a str {
         unsafe {
-            return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
+            let name = CString::new(sqlite3_column_name(self.stmt, i as c_int), false);
+            let namestr: &str = str::raw::from_utf8(name.as_bytes_no_nul());
+            transmute(namestr) // make it outlive the original `CString`
         }
     }
 
@@ -219,7 +226,7 @@ impl<'db> Cursor<'db> {
         let mut i = 0;
         let mut r = Vec::new();
         while i < cnt {
-            r.push(self.get_column_name(i));
+            r.push(self.get_column_name(i).to_string());
             i += 1;
         }
         return r;
