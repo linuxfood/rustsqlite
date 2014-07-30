@@ -41,7 +41,7 @@ use types::*;
 /// The database cursor.
 pub struct Cursor<'db> {
     stmt: *mut stmt,
-    _dbh: &'db *mut dbh
+    _dbh: &'db *mut dbh // make this non-`Send`able
 }
 
 pub fn cursor_with_statement<'db>(stmt: *mut stmt, dbh: &'db *mut dbh) -> Cursor<'db> {
@@ -65,7 +65,7 @@ impl<'db> Cursor<'db> {
 
     /// Resets a prepared SQL statement, but does not reset its bindings.
     /// See http://www.sqlite.org/c3ref/reset.html
-    pub fn reset(&self) -> ResultCode {
+    pub fn reset(&mut self) -> ResultCode {
         unsafe {
             sqlite3_reset(self.stmt)
         }
@@ -73,7 +73,7 @@ impl<'db> Cursor<'db> {
 
     /// Resets all bindings on a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/clear_bindings.html
-    pub fn clear_bindings(&self) -> ResultCode {
+    pub fn clear_bindings(&mut self) -> ResultCode {
         unsafe {
             sqlite3_clear_bindings(self.stmt)
         }
@@ -81,14 +81,14 @@ impl<'db> Cursor<'db> {
 
     /// Evaluates a prepared SQL statement one ore more times.
     /// See http://www.sqlite.org/c3ref/step.html
-    pub fn step(&self) -> ResultCode {
+    pub fn step(&mut self) -> ResultCode {
         unsafe {
             sqlite3_step(self.stmt)
         }
     }
 
     ///
-    pub fn step_row(&self) -> SqliteResult<Option<RowMap>> {
+    pub fn step_row(&mut self) -> SqliteResult<Option<RowMap>> {
         let is_row: ResultCode = self.step();
         if is_row == SQLITE_ROW {
             let column_cnt = self.get_column_count();
@@ -121,7 +121,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_blob<'a>(&'a self, i: int) -> Option<&'a [u8]> {
+    pub fn get_blob<'a>(&'a mut self, i: int) -> Option<&'a [u8]> {
         let ptr = unsafe {sqlite3_column_blob(self.stmt, i as c_int)};
         let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
         if ptr.is_null() {
@@ -134,7 +134,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_int(&self, i: int) -> int {
+    pub fn get_int(&mut self, i: int) -> int {
         unsafe {
             return sqlite3_column_int(self.stmt, i as c_int) as int;
         }
@@ -142,7 +142,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_i64(&self, i: int) -> i64 {
+    pub fn get_i64(&mut self, i: int) -> i64 {
         unsafe {
             return sqlite3_column_int64(self.stmt, i as c_int) as i64;
         }
@@ -150,7 +150,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_f64(&self, i: int) -> f64 {
+    pub fn get_f64(&mut self, i: int) -> f64 {
         unsafe {
             return sqlite3_column_double(self.stmt, i as c_int);
         }
@@ -158,7 +158,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_text<'a>(&'a self, i: int) -> Option<&'a str> {
+    pub fn get_text<'a>(&'a mut self, i: int) -> Option<&'a str> {
         let ptr = unsafe {sqlite3_column_text(self.stmt, i as c_int)};
         let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
         if ptr.is_null() {
@@ -233,7 +233,7 @@ impl<'db> Cursor<'db> {
     }
 
     ///
-    pub fn bind_params(&self, values: &[BindArg]) -> ResultCode {
+    pub fn bind_params(&mut self, values: &[BindArg]) -> ResultCode {
         // SQL parameter index (starting from 1).
         let mut i = 1i;
         for v in values.iter() {
@@ -248,7 +248,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/bind_blob.html
-    pub fn bind_param(&self, i: int, value: &BindArg) -> ResultCode {
+    pub fn bind_param(&mut self, i: int, value: &BindArg) -> ResultCode {
 
         debug!("`Cursor.bind_param()`: stmt={:?}", self.stmt);
 

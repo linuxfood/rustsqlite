@@ -137,7 +137,7 @@ mod tests {
         let database = checked_open();
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
-        let sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
+        let mut sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
         debug!("test `prepare_insert_stmt`: res={:?}", res);
     }
@@ -153,7 +153,7 @@ mod tests {
             COMMIT;"
         );
 
-        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id = 1;");
+        let mut sth = checked_prepare(&database, "SELECT id FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_int(0) == 1);
         assert!(sth.step() == SQLITE_DONE);
@@ -170,7 +170,7 @@ mod tests {
             COMMIT;"
         );
 
-        let sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
+        let mut sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_blob(0) == Some([0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff].as_slice()));
         assert!(sth.step() == SQLITE_DONE);
@@ -187,7 +187,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id) VALUES(3);
                 INSERT OR IGNORE INTO test (id) VALUES(4);"
         );
-        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ? AND id < ?");
+        let mut sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ? AND id < ?");
         assert!(sth.bind_param(1, &Integer(2)) == SQLITE_OK);
         assert!(sth.bind_param(2, &Integer(4)) == SQLITE_OK);
 
@@ -205,7 +205,7 @@ mod tests {
             "INSERT OR IGNORE INTO test (id) VALUES(0);
              INSERT OR IGNORE INTO test (id) VALUES(1234567890123456);"
         );
-        let sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ?");
+        let mut sth = checked_prepare(&database, "SELECT id FROM test WHERE id > ?");
         assert!(sth.bind_param(1, &Integer64(1234567890120000)) == SQLITE_OK);
 
         assert!(sth.step() == SQLITE_ROW);
@@ -218,7 +218,7 @@ mod tests {
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
 
-        let sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
+        let mut sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
 
         assert!(sth.bind_param(1, &Text("test".to_string())) == SQLITE_OK);
     }
@@ -229,7 +229,7 @@ mod tests {
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text, id integer); COMMIT;");
 
-        let sth = checked_prepare(&database, "INSERT INTO TEST (name, id) values (?, ?)");
+        let mut sth = checked_prepare(&database, "INSERT INTO TEST (name, id) values (?, ?)");
         assert!(sth.bind_params(&[Integer(12345), Text("test".to_string())]) == SQLITE_OK);
     }
 
@@ -239,16 +239,47 @@ mod tests {
 
         checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
 
-        let sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
+        let mut sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
 
         assert!(sth.bind_param(1, &StaticText("test")) == SQLITE_OK);
         assert!(sth.bind_param(2, &Integer(100)) == SQLITE_OK);
         assert_eq!(sth.step(), SQLITE_DONE);
 
-        let st2 = checked_prepare(&database, "SELECT * FROM test");
+        let mut st2 = checked_prepare(&database, "SELECT * FROM test");
         assert_eq!(st2.step(), SQLITE_ROW);
         assert_eq!(st2.get_int(0), 100);
-        assert_eq!(st2.get_text(1), "test".to_string());
+        assert_eq!(st2.get_text(1), Some("test".as_slice()));
+    }
+
+    #[test]
+    fn prepared_stmt_bind_static_text_interleaved() {
+        let database = checked_open();
+
+        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
+
+        let mut sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
+        let mut st2 = checked_prepare(&database, "SELECT * FROM test");
+
+        assert_eq!(st2.step(), SQLITE_DONE);
+
+        assert_eq!(sth.bind_param(1, &StaticText("test")), SQLITE_OK);
+        assert_eq!(sth.bind_param(2, &Integer(100)), SQLITE_OK);
+        assert_eq!(sth.step(), SQLITE_DONE);
+
+        // this is perfectly safe.
+        assert_eq!(st2.reset(), SQLITE_OK);
+        assert_eq!(st2.step(), SQLITE_ROW);
+        assert_eq!(st2.get_int(0), 100);
+        assert_eq!(st2.get_text(1), Some("test".as_slice()));
+        assert_eq!(st2.step(), SQLITE_DONE);
+
+        // notes:
+        //
+        // while it is safe to make an update to the table *while* still reading from it,
+        // the update may or may not visible from the reading cursor depending on the query
+        // (e.g. `ORDER BY` on the unindexed table makes the cursor read every row in advance
+        // and the further changes won't be visible) and the result wildly varies.
+        // it is best not to rely on such behaviors.
     }
 
     #[test]
@@ -261,7 +292,7 @@ mod tests {
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
                 COMMIT;"
         );
-        let sth = checked_prepare(&database, "SELECT * FROM test");
+        let mut sth = checked_prepare(&database, "SELECT * FROM test");
         assert!(sth.step() == SQLITE_ROW);
         assert!(sth.get_column_names() == vec!("id".to_string(), "v".to_string()));
     }
@@ -291,7 +322,8 @@ mod tests {
                 COMMIT;"
         );
         let sth = checked_prepare(&database, "SELECT * FROM test WHERE v=:Name");
-        assert!(sth.get_bind_index(":Name") == 1);
+        assert_eq!(sth.get_bind_index(":Name"), 1);
+        assert_eq!(sth.get_bind_index(":Bogus"), 0);
     }
 
     #[test]
@@ -322,7 +354,7 @@ mod tests {
             COMMIT;
             "
         );
-        let sth = checked_prepare(&database, "SELECT * FROM test WHERE id=2");
+        let mut sth = checked_prepare(&database, "SELECT * FROM test WHERE id=2");
         let r = sth.step_row();
         let possible_row = r.unwrap();
         match possible_row {
@@ -354,14 +386,14 @@ mod tests {
     #[test]
     fn get_text_without_step() {
         let db = checked_open();
-        let c = checked_prepare(&db, "select 1 + 1");
+        let mut c = checked_prepare(&db, "select 1 + 1");
         assert_eq!(c.get_text(0), None);
     }
 
     #[test]
     fn get_text_on_bogus_col() {
         let db = checked_open();
-        let c = checked_prepare(&db, "select 1 + 1");
+        let mut c = checked_prepare(&db, "select 1 + 1");
         c.step();
         assert_eq!(c.get_text(1), None);
     }

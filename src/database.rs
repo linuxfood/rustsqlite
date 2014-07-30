@@ -34,17 +34,20 @@ use ffi::*;
 use libc::c_int;
 use std::ptr;
 use std::string;
+use std::kinds::marker;
 use types::*;
 
 /// The database connection.
 pub struct Database {
     dbh: *mut dbh,
+    _marker: marker::NoSend // make this non-`Send`able
 }
 
 pub fn database_with_handle(dbh: *mut dbh) -> Database {
-    Database { dbh: dbh }
+    Database { dbh: dbh, _marker: marker::NoSend }
 }
 
+#[unsafe_destructor]
 impl Drop for Database {
     /// Closes the database connection.
     /// See http://www.sqlite.org/c3ref/close.html
@@ -115,7 +118,7 @@ impl Database {
 
     /// Sets a busy timeout.
     /// See http://www.sqlite.org/c3ref/busy_timeout.html
-    pub fn set_busy_timeout(&self, ms: int) -> ResultCode {
+    pub fn set_busy_timeout(&mut self, ms: int) -> ResultCode {
         unsafe {
             sqlite3_busy_timeout(self.dbh, ms as c_int)
         }
