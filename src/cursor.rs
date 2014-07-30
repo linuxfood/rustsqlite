@@ -32,7 +32,7 @@
 use ffi::*;
 use libc::{c_int, c_void};
 use std::collections::HashMap;
-use std::str;
+use std::string;
 use std::slice;
 use types::*;
 
@@ -164,7 +164,7 @@ impl<'db> Cursor<'db> {
     /// See http://www.sqlite.org/c3ref/column_blob.html
     pub fn get_text(&self, i: int) -> String {
         unsafe {
-            return str::raw::from_c_str( sqlite3_column_text(self.stmt, i as c_int) );
+            return string::raw::from_buf( sqlite3_column_text(self.stmt, i as c_int) as *const u8);
         }
     }
 
@@ -191,7 +191,7 @@ impl<'db> Cursor<'db> {
     /// See http://www.sqlite.org/c3ref/column_name.html
     pub fn get_column_name(&self, i: int) -> String {
         unsafe {
-            return str::raw::from_c_str( sqlite3_column_name(self.stmt, i as c_int) );
+            return string::raw::from_buf( sqlite3_column_name(self.stmt, i as c_int) as *const u8);
         }
     }
 
