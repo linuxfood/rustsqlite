@@ -30,7 +30,7 @@
 */
 
 use ffi::*;
-use libc::{c_int, c_void};
+use libc::{c_int, c_void, c_char};
 use std::collections::HashMap;
 use std::mem::transmute;
 use std::str;
@@ -276,18 +276,19 @@ impl<'db> Cursor<'db> {
                 let l = v.len();
                 debug!("  `StaticText`: v={:?}, l={:?}", v, l);
 
-                (*v).with_c_str( |_v| {
+                {
+                    let _v = v.as_bytes();
                     debug!("  _v={:?}", _v);
                     unsafe {
                         sqlite3_bind_text(
                               self.stmt   // the SQL statement
                             , i as c_int  // the SQL parameter index (starting from 1)
-                            , _v          // the value to bind
+                            , _v.as_ptr() as *const c_char // the value to bind
                             , l as c_int  // the number of bytes
                             , 0 as *mut c_void// SQLITE_STATIC
                             )
                     }
-                })
+                }
             }
 
             Blob(ref v) => {
