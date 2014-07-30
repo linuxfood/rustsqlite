@@ -233,15 +233,23 @@ mod tests {
         assert!(sth.bind_params(&[Integer(12345), Text("test".to_string())]) == SQLITE_OK);
     }
 
+    #[ignore] // until the bug is fixed
     #[test]
     fn prepared_stmt_bind_static_text() {
         let database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
+        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
 
-        let sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
+        let sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
 
         assert!(sth.bind_param(1, &StaticText("test")) == SQLITE_OK);
+        assert!(sth.bind_param(2, &Integer(100)) == SQLITE_OK);
+        assert_eq!(sth.step(), SQLITE_DONE);
+
+        let st2 = checked_prepare(&database, "SELECT * FROM test");
+        assert_eq!(st2.step(), SQLITE_ROW);
+        assert_eq!(st2.get_int(0), 100);
+        assert_eq!(st2.get_text(1), "test".to_string());
     }
 
     #[test]
