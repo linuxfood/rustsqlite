@@ -233,7 +233,6 @@ mod tests {
         assert!(sth.bind_params(&[Integer(12345), Text("test".to_string())]) == SQLITE_OK);
     }
 
-    #[ignore] // until the bug is fixed
     #[test]
     fn prepared_stmt_bind_static_text() {
         let database = checked_open();
