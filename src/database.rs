@@ -38,13 +38,19 @@ use std::kinds::marker;
 use types::*;
 
 /// The database connection.
+///
+/// SQLite database is `Send`able but not `Copy`able nor `Sync`able.
+/// Consequently, it can be shared through `std::sync::Mutex` across tasks
+/// (as it grants an exclusive access to the connection)
+/// but cannot be shared through `std::sync::RWLock`.
 pub struct Database {
     dbh: *mut dbh,
-    _marker: marker::NoSend // make this non-`Send`able
+    _nocopy: marker::NoCopy,
+    _nosync: marker::NoSync,
 }
 
 pub fn database_with_handle(dbh: *mut dbh) -> Database {
-    Database { dbh: dbh, _marker: marker::NoSend }
+    Database { dbh: dbh, _nocopy: marker::NoCopy, _nosync: marker::NoSync }
 }
 
 #[unsafe_destructor]
@@ -88,7 +94,7 @@ impl Database {
 
     /// Executes an SQL statement.
     /// See http://www.sqlite.org/c3ref/exec.html
-    pub fn exec(&self, sql: &str) -> SqliteResult<bool> {
+    pub fn exec(&mut self, sql: &str) -> SqliteResult<bool> {
         let mut r = SQLITE_ERROR;
         sql.with_c_str( |_sql| {
             unsafe {

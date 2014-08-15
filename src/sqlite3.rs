@@ -114,7 +114,7 @@ mod tests {
         }
     }
 
-    fn checked_exec(database: &Database, sql: &str) {
+    fn checked_exec(database: &mut Database, sql: &str) {
         match database.exec(sql) {
             Ok(..) => {}
             Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
@@ -128,15 +128,15 @@ mod tests {
 
     #[test]
     fn exec_create_tbl() {
-        let database = checked_open();
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+        let mut database = checked_open();
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
     }
 
     #[test]
     fn prepare_insert_stmt() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
         let mut sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
         debug!("test `prepare_insert_stmt`: res={:?}", res);
@@ -144,9 +144,9 @@ mod tests {
 
     #[test]
     fn prepare_select_stmt() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "BEGIN;
             CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT);
             INSERT OR IGNORE INTO test (id) VALUES (1);
@@ -161,9 +161,9 @@ mod tests {
 
     #[test]
     fn prepare_select_stmt_blob() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "BEGIN;
             CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
             INSERT OR IGNORE INTO test (id, v) VALUES (1, x'00123456789abcdeff');
@@ -178,11 +178,11 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_int() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "INSERT OR IGNORE INTO test (id) VALUES(2);
                 INSERT OR IGNORE INTO test (id) VALUES(3);
                 INSERT OR IGNORE INTO test (id) VALUES(4);"
@@ -197,11 +197,11 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_i64() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "INSERT OR IGNORE INTO test (id) VALUES(0);
              INSERT OR IGNORE INTO test (id) VALUES(1234567890123456);"
         );
@@ -214,9 +214,9 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_text() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text); COMMIT;");
 
         let mut sth = checked_prepare(&database, "INSERT INTO test (name) VALUES (?)");
 
@@ -225,9 +225,9 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_params() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text, id integer); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (name text, id integer); COMMIT;");
 
         let mut sth = checked_prepare(&database, "INSERT INTO TEST (name, id) values (?, ?)");
         assert!(sth.bind_params(&[Integer(12345), Text("test".to_string())]) == SQLITE_OK);
@@ -235,9 +235,9 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_static_text() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
 
         let mut sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
 
@@ -253,9 +253,9 @@ mod tests {
 
     #[test]
     fn prepared_stmt_bind_static_text_interleaved() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
+        checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id int, name text); COMMIT;");
 
         let mut sth = checked_prepare(&database, "INSERT INTO test (name, id) VALUES (?, ?)");
         let mut st2 = checked_prepare(&database, "SELECT * FROM test");
@@ -284,9 +284,9 @@ mod tests {
 
     #[test]
     fn column_names() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "BEGIN;
                 CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -300,9 +300,9 @@ mod tests {
     #[test]
     #[should_fail]
     fn failed_prepare() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "BEGIN;
                 CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -313,9 +313,9 @@ mod tests {
 
     #[test]
     fn bind_param_index() {
-        let database = checked_open();
+        let mut database = checked_open();
 
-        checked_exec(&database,
+        checked_exec(&mut database,
             "BEGIN;
                 CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT, v TEXT);
                 INSERT OR IGNORE INTO test (id, v) VALUES(1, 'leeeee');
@@ -328,8 +328,8 @@ mod tests {
 
     #[test]
     fn last_insert_id() {
-        let database = checked_open();
-        checked_exec(&database,
+        let mut database = checked_open();
+        checked_exec(&mut database,
             "
             BEGIN;
             CREATE TABLE IF NOT EXISTS test (v TEXT);
@@ -343,8 +343,8 @@ mod tests {
 
     #[test]
     fn step_row_basics() {
-        let database = checked_open();
-        checked_exec(&database,
+        let mut database = checked_open();
+        checked_exec(&mut database,
             "
             BEGIN;
             CREATE TABLE IF NOT EXISTS test (id INTEGER, k TEXT, v REAL);
@@ -396,6 +396,16 @@ mod tests {
         let mut c = checked_prepare(&db, "select 1 + 1");
         c.step();
         assert_eq!(c.get_text(1), None);
+    }
+
+    #[test]
+    fn sendable_db() {
+        let db = checked_open();
+        spawn(proc() {
+            let mut c = checked_prepare(&db, "select 1 + 1");
+            c.step();
+            assert_eq!(c.get_int(0), 2);
+        });
     }
 }
 

@@ -39,6 +39,11 @@ use std::c_str::CString;
 use types::*;
 
 /// The database cursor.
+///
+/// Unlike `Database`, `Cursor` is dependent of the active database connection
+/// and cannot be shared across tasks (non-`Send`able). It is a compile time error
+/// that `Cursor` outlives `Database` either by `Database` escaping the block scope
+/// or by the task-shared reference to `Database` being expired.
 pub struct Cursor<'db> {
     stmt: *mut stmt,
     _dbh: &'db *mut dbh // make this non-`Send`able
