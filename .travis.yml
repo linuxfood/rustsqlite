@@ -2,11 +2,9 @@ before_install:
   - sudo apt-get update
 install:
   - sudo apt-get install sqlite3
-  - curl -s http://www.rust-lang.org/rustup.sh | sudo sh
-  - curl -O http://static.rust-lang.org/cargo-dist/cargo-nightly-linux.tar.gz
-  - tar xf cargo-nightly-linux.tar.gz
+  - curl https://static.rust-lang.org/rustup.sh | sudo bash
 notifications:
   email: false
 script:
-  - ./cargo-nightly/bin/cargo build --verbose
-  - ./cargo-nightly/bin/cargo test --verbose
+  - /usr/local/bin/cargo build --verbose
+  - /usr/local/bin/cargo test --verbose
