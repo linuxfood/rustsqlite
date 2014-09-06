@@ -3,3 +3,6 @@ libsqlite*
 *.dSYM
 sqlite
 target
+
+# Libraries should ignore Cargo.lock
+Cargo.lock
