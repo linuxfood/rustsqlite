@@ -2,7 +2,6 @@
 #![crate_type = "lib"]
 #![feature(globs, phase, unsafe_destructor)]
 #[phase(plugin, link)] extern crate log;
-extern crate debug;
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
@@ -88,7 +87,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
         }
         Err(r)
     } else {
-        debug!("`open()`: dbh={:?}", dbh);
+        debug!("`open()`: dbh={}", dbh);
         Ok(database_with_handle(dbh))
     }
 }
@@ -103,7 +102,7 @@ mod tests {
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
             Ok(s)  => s,
-            Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
+            Err(x) => fail!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
         }
     }
 
@@ -117,7 +116,7 @@ mod tests {
     fn checked_exec(database: &mut Database, sql: &str) {
         match database.exec(sql) {
             Ok(..) => {}
-            Err(x) => fail!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
+            Err(x) => fail!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
         }
     }
 
@@ -139,7 +138,7 @@ mod tests {
         checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
         let mut sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
-        debug!("test `prepare_insert_stmt`: res={:?}", res);
+        debug!("test `prepare_insert_stmt`: res={}", res);
     }
 
     #[test]

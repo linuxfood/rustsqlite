@@ -50,7 +50,7 @@ pub struct Cursor<'db> {
 }
 
 pub fn cursor_with_statement<'db>(stmt: *mut stmt, dbh: &'db *mut dbh) -> Cursor<'db> {
-    debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
+    debug!("`Cursor.cursor_with_statement()`: stmt={}", stmt);
     Cursor { stmt: stmt, _dbh: dbh }
 }
 
@@ -59,7 +59,7 @@ impl<'db> Drop for Cursor<'db> {
     /// Deletes a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/finalize.html
     fn drop(&mut self) {
-        debug!("`Cursor.drop()`: stmt={:?}", self.stmt);
+        debug!("`Cursor.drop()`: stmt={}", self.stmt);
         unsafe {
             sqlite3_finalize(self.stmt);
         }
@@ -255,15 +255,15 @@ impl<'db> Cursor<'db> {
     /// See http://www.sqlite.org/c3ref/bind_blob.html
     pub fn bind_param(&mut self, i: int, value: &BindArg) -> ResultCode {
 
-        debug!("`Cursor.bind_param()`: stmt={:?}", self.stmt);
+        debug!("`Cursor.bind_param()`: stmt={}", self.stmt);
 
         let r = match *value {
             Text(ref v) => {
                 let l = v.len();
-                debug!("  `Text`: v={:?}, l={:?}", v, l);
+                debug!("  `Text`: v={}, l={}", v, l);
 
                 (*v).with_c_str( |_v| {
-                    debug!("  _v={:?}", _v);
+                    debug!("  _v={}", _v);
                     unsafe {
                         // FIXME: do not copy the data
                         sqlite3_bind_text(
@@ -279,11 +279,11 @@ impl<'db> Cursor<'db> {
 
             StaticText(ref v) => {
                 let l = v.len();
-                debug!("  `StaticText`: v={:?}, l={:?}", v, l);
+                debug!("  `StaticText`: v={}, l={}", v, l);
 
                 {
                     let _v = v.as_bytes();
-                    debug!("  _v={:?}", _v);
+                    debug!("  _v={}", _v);
                     unsafe {
                         sqlite3_bind_text(
                               self.stmt   // the SQL statement
@@ -298,7 +298,7 @@ impl<'db> Cursor<'db> {
 
             Blob(ref v) => {
                 let l = v.len();
-                debug!("`Blob`: v={:?}, l={:?}", v, l);
+                debug!("`Blob`: v={}, l={}", v, l);
 
                 unsafe {
                     // FIXME: do not copy the data
