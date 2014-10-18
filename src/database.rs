@@ -58,7 +58,7 @@ impl Drop for Database {
     /// Closes the database connection.
     /// See http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
-        debug!("`Database.drop()`: dbh={:?}", self.dbh);
+        debug!("`Database.drop()`: dbh={}", self.dbh);
         unsafe {
             sqlite3_close(self.dbh);
         }
@@ -85,7 +85,7 @@ impl Database {
             }
         });
         if r == SQLITE_OK {
-            debug!("`Database.prepare()`: stmt={:?}", new_stmt);
+            debug!("`Database.prepare()`: stmt={}", new_stmt);
             Ok( cursor_with_statement(new_stmt, &self.dbh))
         } else {
             Err(r)
