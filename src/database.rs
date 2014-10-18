@@ -78,10 +78,10 @@ impl Database {
     /// Prepares/compiles an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
     pub fn prepare<'db>(&'db self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor<'db>> {
-        let mut new_stmt = ptr::mut_null();
+        let mut new_stmt = ptr::null_mut();
         let r = sql.with_c_str( |_sql| {
             unsafe {
-                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &mut new_stmt, ptr::mut_null())
+                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &mut new_stmt, ptr::null_mut())
             }
         });
         if r == SQLITE_OK {
@@ -98,7 +98,7 @@ impl Database {
         let mut r = SQLITE_ERROR;
         sql.with_c_str( |_sql| {
             unsafe {
-                r = sqlite3_exec(self.dbh, _sql, ptr::mut_null(), ptr::mut_null(), ptr::mut_null())
+                r = sqlite3_exec(self.dbh, _sql, ptr::null_mut(), ptr::null_mut(), ptr::null_mut())
             }
         });
 
