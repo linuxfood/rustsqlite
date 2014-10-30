@@ -110,7 +110,7 @@ impl<'db> Cursor<'db> {
                     SQLITE_NULL    => sqlrow.insert(name, Null),
                 };
                 if res == false {
-                    fail!("Couldn't insert a value into the map for sqlrow!");
+                    panic!("Couldn't insert a value into the map for sqlrow!");
                 }
                 i += 1;
             }
@@ -220,7 +220,7 @@ impl<'db> Cursor<'db> {
             3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
             4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
             5 /* SQLITE_NULL    */ => SQLITE_NULL,
-            _ => fail!(format!("sqlite internal error: Got an unknown column type ({:d}) back from the library.", ct)),
+            _ => panic!(format!("sqlite internal error: Got an unknown column type ({:d}) back from the library.", ct)),
         };
         return res;
     }

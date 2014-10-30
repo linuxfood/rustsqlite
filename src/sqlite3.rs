@@ -102,21 +102,21 @@ mod tests {
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
             Ok(s)  => s,
-            Err(x) => fail!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
+            Err(x) => panic!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
         }
     }
 
     fn checked_open() -> Database {
         match open(":memory:") {
             Ok(database) => database,
-            Err(ref e) => fail!(e.to_string()),
+            Err(ref e) => panic!(e.to_string()),
         }
     }
 
     fn checked_exec(database: &mut Database, sql: &str) {
         match database.exec(sql) {
             Ok(..) => {}
-            Err(x) => fail!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
+            Err(x) => panic!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
         }
     }
 
@@ -364,7 +364,7 @@ mod tests {
                 assert!(x.pop(&"v".to_string())  == Some(Float64(2.17)));
             }
             None => {
-                fail!("didnt get even one row back.");
+                panic!("didnt get even one row back.");
             }
         }
     }
