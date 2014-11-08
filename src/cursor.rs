@@ -109,9 +109,7 @@ impl<'db> Cursor<'db> {
                     SQLITE_BLOB    => sqlrow.insert(name, Blob(self.get_blob(i).unwrap().to_vec())),
                     SQLITE_NULL    => sqlrow.insert(name, Null),
                 };
-                if res == false {
-                    panic!("Couldn't insert a value into the map for sqlrow!");
-                }
+                assert!(res.is_none(), "Duplicate column name for sqlrow!");
                 i += 1;
             }
 

@@ -359,9 +359,9 @@ mod tests {
         match possible_row {
             Some(x) => {
                 let mut x = x;
-                assert!(x.pop(&"id".to_string()) == Some(Integer(2)));
-                assert!(x.pop(&"k".to_string())  == Some(Text("e".to_string())));
-                assert!(x.pop(&"v".to_string())  == Some(Float64(2.17)));
+                assert!(x.remove(&"id".to_string()) == Some(Integer(2)));
+                assert!(x.remove(&"k".to_string())  == Some(Text("e".to_string())));
+                assert!(x.remove(&"v".to_string())  == Some(Float64(2.17)));
             }
             None => {
                 panic!("didnt get even one row back.");
