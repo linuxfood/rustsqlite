@@ -36,6 +36,7 @@ use std::ptr;
 use std::string;
 use std::kinds::marker;
 use types::*;
+use types::ResultCode::*;
 
 /// The database connection.
 ///

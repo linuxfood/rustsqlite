@@ -32,6 +32,8 @@
 use std::collections::HashMap;
 use std::fmt;
 
+use self::ResultCode::*;
+
 #[deriving(PartialEq, Eq)]
 #[repr(C)]
 pub enum ResultCode {

@@ -40,6 +40,7 @@ pub use cursor::*;
 pub use database::*;
 use ffi::*;
 pub use types::*;
+use types::ResultCode::*;
 use std::ptr;
 
 pub mod cursor;
@@ -98,6 +99,8 @@ mod tests {
     use database::*;
     use super::*;
     use types::*;
+    use types::BindArg::*;
+    use types::ResultCode::*;
 
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
