@@ -37,6 +37,9 @@ use std::str;
 use std::slice;
 use std::c_str::CString;
 use types::*;
+use types::BindArg::*;
+use types::ColumnType::*;
+use types::ResultCode::*;
 
 /// The database cursor.
 ///
