@@ -221,7 +221,7 @@ impl<'db> Cursor<'db> {
             3 /* SQLITE_TEXT    */ => SQLITE_TEXT,
             4 /* SQLITE_BLOB    */ => SQLITE_BLOB,
             5 /* SQLITE_NULL    */ => SQLITE_NULL,
-            _ => panic!(format!("sqlite internal error: Got an unknown column type ({:d}) back from the library.", ct)),
+            _ => panic!(format!("sqlite internal error: Got an unknown column type ({}) back from the library.", ct)),
         };
         return res;
     }
