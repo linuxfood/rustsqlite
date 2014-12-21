@@ -1,6 +1,9 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
+
+#![allow(missing_copy_implementations)]
 #![feature(globs, phase, unsafe_destructor)]
+
 #[phase(plugin, link)] extern crate log;
 
 /*
@@ -403,7 +406,7 @@ mod tests {
     #[test]
     fn sendable_db() {
         let db = checked_open();
-        spawn(proc() {
+        spawn(move || {
             let mut c = checked_prepare(&db, "select 1 + 1");
             c.step();
             assert_eq!(c.get_int(0), 2);

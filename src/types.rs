@@ -34,7 +34,7 @@ use std::fmt;
 
 use self::ResultCode::*;
 
-#[deriving(PartialEq, Eq)]
+#[deriving(Copy, PartialEq, Eq)]
 #[repr(C)]
 pub enum ResultCode {
     SQLITE_OK         =  0,
@@ -115,6 +115,7 @@ pub enum BindArg {
     Null,
 }
 
+#[deriving(Copy)]
 pub enum ColumnType {
     SQLITE_INTEGER,
     SQLITE_FLOAT,

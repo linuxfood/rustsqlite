@@ -33,7 +33,6 @@ use cursor::*;
 use ffi::*;
 use libc::c_int;
 use std::ptr;
-use std::string;
 use std::kinds::marker;
 use types::*;
 use types::ResultCode::*;
@@ -72,7 +71,7 @@ impl Database {
     /// See http://www.sqlite.org/c3ref/errcode.html
     pub fn get_errmsg(&self) -> String {
         unsafe {
-            string::raw::from_buf(sqlite3_errmsg(self.dbh) as *const u8)
+            String::from_raw_buf(sqlite3_errmsg(self.dbh) as *const u8)
         }
     }
 

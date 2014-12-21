@@ -133,8 +133,10 @@ impl<'db> Cursor<'db> {
         if ptr.is_null() {
             None
         } else {
-            // make `bytes` outlive the `buf_as_slice` call
-            unsafe {slice::raw::buf_as_slice(ptr, len, |bytes: &[u8]| Some(transmute(bytes)))}
+            unsafe {
+                let bytes = slice::from_raw_buf(&ptr, len);
+                Some(transmute(bytes)) // make `bytes` outlive the `from_raw_buf` call
+            }
         }
     }
 
@@ -165,16 +167,15 @@ impl<'db> Cursor<'db> {
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
     pub fn get_text<'a>(&'a mut self, i: int) -> Option<&'a str> {
-        let ptr = unsafe {sqlite3_column_text(self.stmt, i as c_int)};
+        let ptr = unsafe {sqlite3_column_text(self.stmt, i as c_int)} as *const u8;
         let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
         if ptr.is_null() {
             None
         } else {
             unsafe {
-                slice::raw::buf_as_slice(ptr as *const u8, len, |bytes| {
-                    let text: &str = str::raw::from_utf8(bytes);
-                    Some(transmute(text)) // make `text` outlive the `buf_as_slice` call
-                })
+                let bytes = slice::from_raw_buf(&ptr, len);
+                let text: &str = str::from_utf8_unchecked(bytes);
+                Some(transmute(text)) // make `text` outlive the `from_raw_buf` call
             }
         }
     }
@@ -203,7 +204,7 @@ impl<'db> Cursor<'db> {
     pub fn get_column_name<'a>(&'a self, i: int) -> &'a str {
         unsafe {
             let name = CString::new(sqlite3_column_name(self.stmt, i as c_int), false);
-            let namestr: &str = str::raw::from_utf8(name.as_bytes_no_nul());
+            let namestr: &str = str::from_utf8_unchecked(name.as_bytes_no_nul());
             transmute(namestr) // make it outlive the original `CString`
         }
     }
