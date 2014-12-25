@@ -104,6 +104,7 @@ mod tests {
     use types::*;
     use types::BindArg::*;
     use types::ResultCode::*;
+    use std::thread::Thread;
 
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
@@ -406,11 +407,11 @@ mod tests {
     #[test]
     fn sendable_db() {
         let db = checked_open();
-        spawn(move || {
+        Thread::spawn(move || {
             let mut c = checked_prepare(&db, "select 1 + 1");
             c.step();
             assert_eq!(c.get_int(0), 2);
-        });
+        }).join().ok().unwrap();
     }
 }
 
