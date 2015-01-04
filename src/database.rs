@@ -34,6 +34,7 @@ use ffi::*;
 use libc::c_int;
 use std::ptr;
 use std::kinds::marker;
+use std::c_str::ToCStr;
 use types::*;
 use types::ResultCode::*;
 
@@ -48,6 +49,8 @@ pub struct Database {
     _nocopy: marker::NoCopy,
     _nosync: marker::NoSync,
 }
+
+unsafe impl Send for Database {}
 
 pub fn database_with_handle(dbh: *mut dbh) -> Database {
     Database { dbh: dbh, _nocopy: marker::NoCopy, _nosync: marker::NoSync }

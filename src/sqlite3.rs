@@ -45,6 +45,7 @@ use ffi::*;
 pub use types::*;
 use types::ResultCode::*;
 use std::ptr;
+use std::c_str::ToCStr;
 
 pub mod cursor;
 pub mod database;
@@ -98,10 +99,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
 
 #[cfg(test)]
 mod tests {
-    use cursor::*;
-    use database::*;
     use super::*;
-    use types::*;
     use types::BindArg::*;
     use types::ResultCode::*;
     use std::thread::Thread;

@@ -35,7 +35,7 @@ use std::collections::HashMap;
 use std::mem::transmute;
 use std::str;
 use std::slice;
-use std::c_str::CString;
+use std::c_str::{ToCStr, CString};
 use types::*;
 use types::BindArg::*;
 use types::ColumnType::*;
