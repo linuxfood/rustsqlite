@@ -2,9 +2,9 @@
 #![crate_type = "lib"]
 
 #![allow(missing_copy_implementations)]
-#![feature(globs, phase, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 /*
 ** Copyright (c) 2011, Brian Smith <brian@linuxfood.net>
@@ -45,7 +45,7 @@ use ffi::*;
 pub use types::*;
 use types::ResultCode::*;
 use std::ptr;
-use std::c_str::ToCStr;
+use std::ffi::CString;
 
 pub mod cursor;
 pub mod database;
@@ -59,11 +59,10 @@ pub mod types;
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
-    let r = sql.with_c_str( { |_sql|
-        unsafe {
-            sqlite3_complete(_sql)
-        }
-    }) as int;
+    let sql = CString::from_slice(sql.as_bytes());
+    let r = unsafe {
+        sqlite3_complete(sql.as_ptr()) as int
+    };
     if r == SQLITE_NOMEM as int {
         return Err(SQLITE_NOMEM);
     }
@@ -80,12 +79,11 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 /// `path` can either be a filesystem path or ":memory:".
 /// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
+    let path = CString::from_slice(path.as_bytes());
     let mut dbh = ptr::null_mut();
-    let r = path.with_c_str( |_path| {
-        unsafe {
-            sqlite3_open(_path, &mut dbh)
-        }
-    });
+    let r = unsafe {
+        sqlite3_open(path.as_ptr(), &mut dbh)
+    };
     if r != SQLITE_OK {
         unsafe {
             sqlite3_close(dbh);

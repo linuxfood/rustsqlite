@@ -35,7 +35,7 @@ use std::collections::HashMap;
 use std::mem::transmute;
 use std::str;
 use std::slice;
-use std::c_str::{ToCStr, CString};
+use std::ffi::{CString, c_str_to_bytes};
 use types::*;
 use types::BindArg::*;
 use types::ColumnType::*;
@@ -183,11 +183,10 @@ impl<'db> Cursor<'db> {
     ///
     /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
     pub fn get_bind_index(&self, name: &str) -> int {
+        let name = CString::from_slice(name.as_bytes());
         let stmt = self.stmt;
         unsafe {
-            name.with_c_str( |_name| {
-              return sqlite3_bind_parameter_index(stmt, _name) as int
-            })
+            return sqlite3_bind_parameter_index(stmt, name.as_ptr()) as int
         }
     }
 
@@ -203,8 +202,8 @@ impl<'db> Cursor<'db> {
     /// See http://www.sqlite.org/c3ref/column_name.html
     pub fn get_column_name<'a>(&'a self, i: int) -> &'a str {
         unsafe {
-            let name = CString::new(sqlite3_column_name(self.stmt, i as c_int), false);
-            let namestr: &str = str::from_utf8_unchecked(name.as_bytes_no_nul());
+            let name = sqlite3_column_name(self.stmt, i as c_int);
+            let namestr = str::from_utf8(c_str_to_bytes(&name)).unwrap();
             transmute(namestr) // make it outlive the original `CString`
         }
     }
@@ -264,19 +263,17 @@ impl<'db> Cursor<'db> {
                 let l = v.len();
                 debug!("  `Text`: v={}, l={}", v, l);
 
-                (*v).with_c_str( |_v| {
-                    debug!("  _v={}", _v);
-                    unsafe {
-                        // FIXME: do not copy the data
-                        sqlite3_bind_text(
-                              self.stmt   // the SQL statement
-                            , i as c_int  // the SQL parameter index (starting from 1)
-                            , _v          // the value to bind
-                            , l as c_int  // the number of bytes
-                            , -1 as *mut c_void// SQLITE_TRANSIENT => SQLite makes a copy
-                            )
-                    }
-                })
+                let v = CString::from_slice(v.as_bytes());
+                unsafe {
+                    // FIXME: do not copy the data
+                    sqlite3_bind_text(
+                          self.stmt   // the SQL statement
+                        , i as c_int  // the SQL parameter index (starting from 1)
+                        , v.as_ptr()  // the value to bind
+                        , l as c_int  // the number of bytes
+                        , -1 as *mut c_void// SQLITE_TRANSIENT => SQLite makes a copy
+                        )
+                }
             }
 
             StaticText(ref v) => {

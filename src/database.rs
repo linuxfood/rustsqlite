@@ -32,9 +32,11 @@
 use cursor::*;
 use ffi::*;
 use libc::c_int;
+use std::str;
 use std::ptr;
 use std::kinds::marker;
-use std::c_str::ToCStr;
+use std::borrow::ToOwned;
+use std::ffi::{CString, c_str_to_bytes};
 use types::*;
 use types::ResultCode::*;
 
@@ -74,19 +76,19 @@ impl Database {
     /// See http://www.sqlite.org/c3ref/errcode.html
     pub fn get_errmsg(&self) -> String {
         unsafe {
-            String::from_raw_buf(sqlite3_errmsg(self.dbh) as *const u8)
+            let msg = sqlite3_errmsg(self.dbh);
+            str::from_utf8(c_str_to_bytes(&msg)).unwrap().to_owned()
         }
     }
 
     /// Prepares/compiles an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
     pub fn prepare<'db>(&'db self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor<'db>> {
+        let sql = CString::from_slice(sql.as_bytes());
         let mut new_stmt = ptr::null_mut();
-        let r = sql.with_c_str( |_sql| {
-            unsafe {
-                sqlite3_prepare_v2(self.dbh, _sql, sql.len() as c_int, &mut new_stmt, ptr::null_mut())
-            }
-        });
+        let r = unsafe {
+            sqlite3_prepare_v2(self.dbh, sql.as_ptr(), sql.len() as c_int, &mut new_stmt, ptr::null_mut())
+        };
         if r == SQLITE_OK {
             debug!("`Database.prepare()`: stmt={}", new_stmt);
             Ok( cursor_with_statement(new_stmt, &self.dbh))
@@ -98,12 +100,10 @@ impl Database {
     /// Executes an SQL statement.
     /// See http://www.sqlite.org/c3ref/exec.html
     pub fn exec(&mut self, sql: &str) -> SqliteResult<bool> {
-        let mut r = SQLITE_ERROR;
-        sql.with_c_str( |_sql| {
-            unsafe {
-                r = sqlite3_exec(self.dbh, _sql, ptr::null_mut(), ptr::null_mut(), ptr::null_mut())
-            }
-        });
+        let sql = CString::from_slice(sql.as_bytes());
+        let r = unsafe {
+            sqlite3_exec(self.dbh, sql.as_ptr(), ptr::null_mut(), ptr::null_mut(), ptr::null_mut())
+        };
 
         if r == SQLITE_OK { Ok(true) } else { Err(r) }
     }
