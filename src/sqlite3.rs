@@ -1,7 +1,7 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 
-#![allow(missing_copy_implementations)]
+#![allow(missing_copy_implementations, unstable)]
 #![feature(unsafe_destructor)]
 
 #[macro_use] extern crate log;
@@ -61,9 +61,9 @@ pub mod types;
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
     let sql = CString::from_slice(sql.as_bytes());
     let r = unsafe {
-        sqlite3_complete(sql.as_ptr()) as int
+        sqlite3_complete(sql.as_ptr()) as isize
     };
-    if r == SQLITE_NOMEM as int {
+    if r == SQLITE_NOMEM as isize {
         return Err(SQLITE_NOMEM);
     }
     else if r == 1 {
@@ -90,7 +90,7 @@ pub fn open(path: &str) -> SqliteResult<Database> {
         }
         Err(r)
     } else {
-        debug!("`open()`: dbh={}", dbh);
+        debug!("`open()`: dbh={:?}", dbh);
         Ok(database_with_handle(dbh))
     }
 }
@@ -105,21 +105,21 @@ mod tests {
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
             Ok(s)  => s,
-            Err(x) => panic!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
+            Err(x) => panic!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
         }
     }
 
     fn checked_open() -> Database {
         match open(":memory:") {
             Ok(database) => database,
-            Err(ref e) => panic!(e.to_string()),
+            Err(ref e) => panic!(format!("{:?}", *e)),
         }
     }
 
     fn checked_exec(database: &mut Database, sql: &str) {
         match database.exec(sql) {
             Ok(..) => {}
-            Err(x) => panic!(format!("sqlite error: \"{}\" ({})", database.get_errmsg(), x)),
+            Err(x) => panic!(format!("sqlite error: \"{}\" ({:?})", database.get_errmsg(), x)),
         }
     }
 
@@ -141,7 +141,7 @@ mod tests {
         checked_exec(&mut database, "BEGIN; CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY AUTOINCREMENT); COMMIT;");
         let mut sth = checked_prepare(&database, "INSERT OR IGNORE INTO test (id) VALUES (1)");
         let res = sth.step();
-        debug!("test `prepare_insert_stmt`: res={}", res);
+        debug!("test `prepare_insert_stmt`: res={:?}", res);
     }
 
     #[test]
@@ -194,7 +194,7 @@ mod tests {
         assert!(sth.bind_param(2, &Integer(4)) == SQLITE_OK);
 
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_f64(0) as int == 3);
+        assert!(sth.get_f64(0) as isize == 3);
     }
 
     #[test]
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn sendable_db() {
         let db = checked_open();
-        Thread::spawn(move || {
+        Thread::scoped(move || {
             let mut c = checked_prepare(&db, "select 1 + 1");
             c.step();
             assert_eq!(c.get_int(0), 2);

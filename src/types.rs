@@ -109,7 +109,7 @@ pub enum BindArg {
     Text(String),
     StaticText(&'static str),
     Float64(f64),
-    Integer(int),
+    Integer(isize),
     Integer64(i64),
     Blob(Vec<u8>),
     Null,

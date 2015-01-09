@@ -34,6 +34,7 @@ use libc::{c_int, c_void, c_char};
 use std::collections::HashMap;
 use std::mem::transmute;
 use std::str;
+use std::fmt;
 use std::slice;
 use std::ffi::{CString, c_str_to_bytes};
 use types::*;
@@ -53,8 +54,14 @@ pub struct Cursor<'db> {
 }
 
 pub fn cursor_with_statement<'db>(stmt: *mut stmt, dbh: &'db *mut dbh) -> Cursor<'db> {
-    debug!("`Cursor.cursor_with_statement()`: stmt={}", stmt);
+    debug!("`Cursor.cursor_with_statement()`: stmt={:?}", stmt);
     Cursor { stmt: stmt, _dbh: dbh }
+}
+
+impl<'db> fmt::Show for Cursor<'db> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<Cursor dbh={:?} stmt={:?}>", self._dbh, self.stmt)
+    }
 }
 
 #[unsafe_destructor]
@@ -62,7 +69,7 @@ impl<'db> Drop for Cursor<'db> {
     /// Deletes a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/finalize.html
     fn drop(&mut self) {
-        debug!("`Cursor.drop()`: stmt={}", self.stmt);
+        debug!("`Cursor.drop()`: self={:?}", *self);
         unsafe {
             sqlite3_finalize(self.stmt);
         }
@@ -127,9 +134,9 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_blob<'a>(&'a mut self, i: int) -> Option<&'a [u8]> {
+    pub fn get_blob<'a>(&'a mut self, i: isize) -> Option<&'a [u8]> {
         let ptr = unsafe {sqlite3_column_blob(self.stmt, i as c_int)};
-        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
+        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as usize;
         if ptr.is_null() {
             None
         } else {
@@ -142,15 +149,15 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_int(&mut self, i: int) -> int {
+    pub fn get_int(&mut self, i: isize) -> isize {
         unsafe {
-            return sqlite3_column_int(self.stmt, i as c_int) as int;
+            return sqlite3_column_int(self.stmt, i as c_int) as isize;
         }
     }
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_i64(&mut self, i: int) -> i64 {
+    pub fn get_i64(&mut self, i: isize) -> i64 {
         unsafe {
             return sqlite3_column_int64(self.stmt, i as c_int) as i64;
         }
@@ -158,7 +165,7 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_f64(&mut self, i: int) -> f64 {
+    pub fn get_f64(&mut self, i: isize) -> f64 {
         unsafe {
             return sqlite3_column_double(self.stmt, i as c_int);
         }
@@ -166,9 +173,9 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_text<'a>(&'a mut self, i: int) -> Option<&'a str> {
+    pub fn get_text<'a>(&'a mut self, i: isize) -> Option<&'a str> {
         let ptr = unsafe {sqlite3_column_text(self.stmt, i as c_int)} as *const u8;
-        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as uint;
+        let len = unsafe {sqlite3_column_bytes(self.stmt, i as c_int)} as usize;
         if ptr.is_null() {
             None
         } else {
@@ -182,25 +189,25 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
-    pub fn get_bind_index(&self, name: &str) -> int {
+    pub fn get_bind_index(&self, name: &str) -> isize {
         let name = CString::from_slice(name.as_bytes());
         let stmt = self.stmt;
         unsafe {
-            return sqlite3_bind_parameter_index(stmt, name.as_ptr()) as int
+            return sqlite3_bind_parameter_index(stmt, name.as_ptr()) as isize
         }
     }
 
     /// Returns the number of columns in a result set.
     /// See http://www.sqlite.org/c3ref/data_count.html
-    pub fn get_column_count(&self) -> int {
+    pub fn get_column_count(&self) -> isize {
         unsafe {
-            return sqlite3_data_count(self.stmt) as int;
+            return sqlite3_data_count(self.stmt) as isize;
         }
     }
 
     /// Returns the name of the column with index `i` in the result set.
     /// See http://www.sqlite.org/c3ref/column_name.html
-    pub fn get_column_name<'a>(&'a self, i: int) -> &'a str {
+    pub fn get_column_name<'a>(&'a self, i: isize) -> &'a str {
         unsafe {
             let name = sqlite3_column_name(self.stmt, i as c_int);
             let namestr = str::from_utf8(c_str_to_bytes(&name)).unwrap();
@@ -210,10 +217,10 @@ impl<'db> Cursor<'db> {
 
     /// Returns the type of the column with index `i` in the result set.
     /// See http://www.sqlite.org/c3ref/column_blob.html
-    pub fn get_column_type(&self, i: int) -> ColumnType {
+    pub fn get_column_type(&self, i: isize) -> ColumnType {
         let ct;
         unsafe {
-            ct = sqlite3_column_type(self.stmt, i as c_int) as int;
+            ct = sqlite3_column_type(self.stmt, i as c_int) as isize;
         }
         let res = match ct {
             1 /* SQLITE_INTEGER */ => SQLITE_INTEGER,
@@ -241,7 +248,7 @@ impl<'db> Cursor<'db> {
     ///
     pub fn bind_params(&mut self, values: &[BindArg]) -> ResultCode {
         // SQL parameter index (starting from 1).
-        let mut i = 1i;
+        let mut i = 1;
         for v in values.iter() {
             let r = self.bind_param(i, v);
             if r != SQLITE_OK {
@@ -254,9 +261,9 @@ impl<'db> Cursor<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/bind_blob.html
-    pub fn bind_param(&mut self, i: int, value: &BindArg) -> ResultCode {
+    pub fn bind_param(&mut self, i: isize, value: &BindArg) -> ResultCode {
 
-        debug!("`Cursor.bind_param()`: stmt={}", self.stmt);
+        debug!("`Cursor.bind_param()`: self={:?}", *self);
 
         let r = match *value {
             Text(ref v) => {
@@ -282,7 +289,7 @@ impl<'db> Cursor<'db> {
 
                 {
                     let _v = v.as_bytes();
-                    debug!("  _v={}", _v);
+                    debug!("  _v={:?}", _v);
                     unsafe {
                         sqlite3_bind_text(
                               self.stmt   // the SQL statement
@@ -297,7 +304,7 @@ impl<'db> Cursor<'db> {
 
             Blob(ref v) => {
                 let l = v.len();
-                debug!("`Blob`: v={}, l={}", v, l);
+                debug!("`Blob`: v={:?}, l={}", v, l);
 
                 unsafe {
                     // FIXME: do not copy the data

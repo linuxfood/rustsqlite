@@ -34,7 +34,8 @@ use ffi::*;
 use libc::c_int;
 use std::str;
 use std::ptr;
-use std::kinds::marker;
+use std::fmt;
+use std::marker;
 use std::borrow::ToOwned;
 use std::ffi::{CString, c_str_to_bytes};
 use types::*;
@@ -58,12 +59,18 @@ pub fn database_with_handle(dbh: *mut dbh) -> Database {
     Database { dbh: dbh, _nocopy: marker::NoCopy, _nosync: marker::NoSync }
 }
 
+impl fmt::Show for Database {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<Database dbh={:?}>", self.dbh)
+    }
+}
+
 #[unsafe_destructor]
 impl Drop for Database {
     /// Closes the database connection.
     /// See http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
-        debug!("`Database.drop()`: dbh={}", self.dbh);
+        debug!("`Database.drop()`: self={:?}", *self);
         unsafe {
             sqlite3_close(self.dbh);
         }
@@ -90,7 +97,7 @@ impl Database {
             sqlite3_prepare_v2(self.dbh, sql.as_ptr(), sql.len() as c_int, &mut new_stmt, ptr::null_mut())
         };
         if r == SQLITE_OK {
-            debug!("`Database.prepare()`: stmt={}", new_stmt);
+            debug!("`Database.prepare()`: stmt={:?}", new_stmt);
             Ok( cursor_with_statement(new_stmt, &self.dbh))
         } else {
             Err(r)
@@ -111,9 +118,9 @@ impl Database {
     /// Returns the number of modified/inserted/deleted rows by the most recent
     /// call.
     /// See http://www.sqlite.org/c3ref/changes.html
-    pub fn get_changes(&self) -> int {
+    pub fn get_changes(&self) -> isize {
         unsafe {
-            sqlite3_changes(self.dbh) as int
+            sqlite3_changes(self.dbh) as isize
         }
     }
 
@@ -127,7 +134,7 @@ impl Database {
 
     /// Sets a busy timeout.
     /// See http://www.sqlite.org/c3ref/busy_timeout.html
-    pub fn set_busy_timeout(&mut self, ms: int) -> ResultCode {
+    pub fn set_busy_timeout(&mut self, ms: isize) -> ResultCode {
         unsafe {
             sqlite3_busy_timeout(self.dbh, ms as c_int)
         }
