@@ -50,13 +50,13 @@ use types::ResultCode::*;
 pub struct Database {
     dbh: *mut dbh,
     _nocopy: marker::NoCopy,
-    _nosync: marker::NoSync,
 }
 
 unsafe impl Send for Database {}
+impl !marker::Sync for Database {}
 
 pub fn database_with_handle(dbh: *mut dbh) -> Database {
-    Database { dbh: dbh, _nocopy: marker::NoCopy, _nosync: marker::NoSync }
+    Database { dbh: dbh, _nocopy: marker::NoCopy }
 }
 
 impl fmt::Show for Database {
