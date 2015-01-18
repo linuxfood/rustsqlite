@@ -2,7 +2,7 @@
 #![crate_type = "lib"]
 
 #![allow(missing_copy_implementations, unstable)]
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, optin_builtin_traits)]
 
 #[macro_use] extern crate log;
 
