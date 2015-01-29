@@ -1,8 +1,9 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 
-#![allow(missing_copy_implementations, unstable)]
+#![allow(missing_copy_implementations)]
 #![feature(unsafe_destructor, optin_builtin_traits)]
+#![feature(core, collections, libc, std_misc)]
 
 #[macro_use] extern crate log;
 
@@ -174,7 +175,7 @@ mod tests {
 
         let mut sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_blob(0) == Some([0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff].as_slice()));
+        assert!(sth.get_blob(0) == Some(&[0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff][]));
         assert!(sth.step() == SQLITE_DONE);
     }
 
@@ -250,7 +251,7 @@ mod tests {
         let mut st2 = checked_prepare(&database, "SELECT * FROM test");
         assert_eq!(st2.step(), SQLITE_ROW);
         assert_eq!(st2.get_int(0), 100);
-        assert_eq!(st2.get_text(1), Some("test".as_slice()));
+        assert_eq!(st2.get_text(1), Some("test"));
     }
 
     #[test]
@@ -272,7 +273,7 @@ mod tests {
         assert_eq!(st2.reset(), SQLITE_OK);
         assert_eq!(st2.step(), SQLITE_ROW);
         assert_eq!(st2.get_int(0), 100);
-        assert_eq!(st2.get_text(1), Some("test".as_slice()));
+        assert_eq!(st2.get_text(1), Some("test"));
         assert_eq!(st2.step(), SQLITE_DONE);
 
         // notes:

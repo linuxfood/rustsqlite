@@ -58,7 +58,7 @@ pub fn cursor_with_statement<'db>(stmt: *mut stmt, dbh: &'db *mut dbh) -> Cursor
     Cursor { stmt: stmt, _dbh: dbh }
 }
 
-impl<'db> fmt::Show for Cursor<'db> {
+impl<'db> fmt::Debug for Cursor<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<Cursor dbh={:?} stmt={:?}>", self._dbh, self.stmt)
     }

@@ -68,7 +68,7 @@ pub enum ResultCode {
     SQLITE_DONE       = 101,
 }
 
-impl fmt::Show for ResultCode {
+impl fmt::Debug for ResultCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
             SQLITE_OK => "Ok",

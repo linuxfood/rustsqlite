@@ -59,7 +59,7 @@ pub fn database_with_handle(dbh: *mut dbh) -> Database {
     Database { dbh: dbh, _nocopy: marker::NoCopy }
 }
 
-impl fmt::Show for Database {
+impl fmt::Debug for Database {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<Database dbh={:?}>", self.dbh)
     }

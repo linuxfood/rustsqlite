@@ -5,3 +5,6 @@ authors = [ "" ]
 
 [lib]
 name = "sqlite3"
+
+[dependencies]
+log = "0.2.1"
