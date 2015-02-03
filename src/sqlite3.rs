@@ -3,7 +3,7 @@
 
 #![allow(missing_copy_implementations)]
 #![feature(unsafe_destructor, optin_builtin_traits)]
-#![feature(core, collections, libc, std_misc)]
+#![feature(core, libc, std_misc)]
 
 #[macro_use] extern crate log;
 
