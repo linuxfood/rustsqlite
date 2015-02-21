@@ -60,7 +60,7 @@ pub mod types;
 /// Determines whether an SQL statement is complete.
 /// See http://www.sqlite.org/c3ref/complete.html
 pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
-    let sql = CString::from_slice(sql.as_bytes());
+    let sql = CString::new(sql.as_bytes()).unwrap();
     let r = unsafe {
         sqlite3_complete(sql.as_ptr()) as isize
     };
@@ -80,7 +80,7 @@ pub fn sqlite_complete(sql: &str) -> SqliteResult<bool> {
 /// `path` can either be a filesystem path or ":memory:".
 /// See http://www.sqlite.org/c3ref/open.html
 pub fn open(path: &str) -> SqliteResult<Database> {
-    let path = CString::from_slice(path.as_bytes());
+    let path = CString::new(path.as_bytes()).unwrap();
     let mut dbh = ptr::null_mut();
     let r = unsafe {
         sqlite3_open(path.as_ptr(), &mut dbh)
@@ -101,7 +101,7 @@ mod tests {
     use super::*;
     use types::BindArg::*;
     use types::ResultCode::*;
-    use std::thread::Thread;
+    use std::thread;
 
     fn checked_prepare<'db>(database: &'db Database, sql: &str) -> Cursor<'db> {
         match database.prepare(sql, &None) {
@@ -175,7 +175,7 @@ mod tests {
 
         let mut sth = checked_prepare(&database, "SELECT v FROM test WHERE id = 1;");
         assert!(sth.step() == SQLITE_ROW);
-        assert!(sth.get_blob(0) == Some(&[0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff][]));
+        assert!(sth.get_blob(0) == Some(&[0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff][..]));
         assert!(sth.step() == SQLITE_DONE);
     }
 
@@ -404,11 +404,11 @@ mod tests {
     #[test]
     fn sendable_db() {
         let db = checked_open();
-        Thread::scoped(move || {
+        thread::scoped(move || {
             let mut c = checked_prepare(&db, "select 1 + 1");
             c.step();
             assert_eq!(c.get_int(0), 2);
-        }).join().ok().unwrap();
+        }).join();
     }
 }
 

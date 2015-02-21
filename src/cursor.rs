@@ -36,7 +36,7 @@ use std::mem::transmute;
 use std::str;
 use std::fmt;
 use std::slice;
-use std::ffi::{CString, c_str_to_bytes};
+use std::ffi::{CString, CStr};
 use types::*;
 use types::BindArg::*;
 use types::ColumnType::*;
@@ -140,10 +140,7 @@ impl<'db> Cursor<'db> {
         if ptr.is_null() {
             None
         } else {
-            unsafe {
-                let bytes = slice::from_raw_buf(&ptr, len);
-                Some(transmute(bytes)) // make `bytes` outlive the `from_raw_buf` call
-            }
+            unsafe {Some(slice::from_raw_parts(ptr, len))}
         }
     }
 
@@ -179,18 +176,14 @@ impl<'db> Cursor<'db> {
         if ptr.is_null() {
             None
         } else {
-            unsafe {
-                let bytes = slice::from_raw_buf(&ptr, len);
-                let text: &str = str::from_utf8_unchecked(bytes);
-                Some(transmute(text)) // make `text` outlive the `from_raw_buf` call
-            }
+            unsafe {Some(str::from_utf8_unchecked(slice::from_raw_parts(ptr, len)))}
         }
     }
 
     ///
     /// See http://www.sqlite.org/c3ref/bind_parameter_index.html
     pub fn get_bind_index(&self, name: &str) -> isize {
-        let name = CString::from_slice(name.as_bytes());
+        let name = CString::new(name.as_bytes()).unwrap();
         let stmt = self.stmt;
         unsafe {
             return sqlite3_bind_parameter_index(stmt, name.as_ptr()) as isize
@@ -210,7 +203,7 @@ impl<'db> Cursor<'db> {
     pub fn get_column_name<'a>(&'a self, i: isize) -> &'a str {
         unsafe {
             let name = sqlite3_column_name(self.stmt, i as c_int);
-            let namestr = str::from_utf8(c_str_to_bytes(&name)).unwrap();
+            let namestr = str::from_utf8(CStr::from_ptr(name).to_bytes()).unwrap();
             transmute(namestr) // make it outlive the original `CString`
         }
     }
@@ -270,7 +263,7 @@ impl<'db> Cursor<'db> {
                 let l = v.len();
                 debug!("  `Text`: v={}, l={}", v, l);
 
-                let v = CString::from_slice(v.as_bytes());
+                let v = CString::new(v.as_bytes()).unwrap();
                 unsafe {
                     // FIXME: do not copy the data
                     sqlite3_bind_text(

@@ -37,7 +37,7 @@ use std::ptr;
 use std::fmt;
 use std::marker;
 use std::borrow::ToOwned;
-use std::ffi::{CString, c_str_to_bytes};
+use std::ffi::{CString, CStr};
 use types::*;
 use types::ResultCode::*;
 
@@ -84,17 +84,17 @@ impl Database {
     pub fn get_errmsg(&self) -> String {
         unsafe {
             let msg = sqlite3_errmsg(self.dbh);
-            str::from_utf8(c_str_to_bytes(&msg)).unwrap().to_owned()
+            str::from_utf8(CStr::from_ptr(msg).to_bytes()).unwrap().to_owned()
         }
     }
 
     /// Prepares/compiles an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
     pub fn prepare<'db>(&'db self, sql: &str, _tail: &Option<&str>) -> SqliteResult<Cursor<'db>> {
-        let sql = CString::from_slice(sql.as_bytes());
+        let sql = CString::new(sql.as_bytes()).unwrap();
         let mut new_stmt = ptr::null_mut();
         let r = unsafe {
-            sqlite3_prepare_v2(self.dbh, sql.as_ptr(), sql.len() as c_int, &mut new_stmt, ptr::null_mut())
+            sqlite3_prepare_v2(self.dbh, sql.as_ptr(), sql.as_bytes().len() as c_int, &mut new_stmt, ptr::null_mut())
         };
         if r == SQLITE_OK {
             debug!("`Database.prepare()`: stmt={:?}", new_stmt);
@@ -107,7 +107,7 @@ impl Database {
     /// Executes an SQL statement.
     /// See http://www.sqlite.org/c3ref/exec.html
     pub fn exec(&mut self, sql: &str) -> SqliteResult<bool> {
-        let sql = CString::from_slice(sql.as_bytes());
+        let sql = CString::new(sql.as_bytes()).unwrap();
         let r = unsafe {
             sqlite3_exec(self.dbh, sql.as_ptr(), ptr::null_mut(), ptr::null_mut(), ptr::null_mut())
         };
