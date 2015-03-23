@@ -104,7 +104,7 @@ impl fmt::Debug for ResultCode {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum BindArg {
     Text(String),
     StaticText(&'static str),
