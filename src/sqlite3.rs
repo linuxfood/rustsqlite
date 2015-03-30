@@ -301,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn failed_prepare() {
         let mut database = checked_open();
 
