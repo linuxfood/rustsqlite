@@ -65,7 +65,6 @@ impl fmt::Debug for Database {
     }
 }
 
-#[unsafe_destructor]
 impl Drop for Database {
     /// Closes the database connection.
     /// See http://www.sqlite.org/c3ref/close.html
