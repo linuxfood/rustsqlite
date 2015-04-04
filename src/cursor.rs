@@ -64,7 +64,6 @@ impl<'db> fmt::Debug for Cursor<'db> {
     }
 }
 
-#[unsafe_destructor]
 impl<'db> Drop for Cursor<'db> {
     /// Deletes a prepared SQL statement.
     /// See http://www.sqlite.org/c3ref/finalize.html
@@ -271,7 +270,7 @@ impl<'db> Cursor<'db> {
                         , i as c_int  // the SQL parameter index (starting from 1)
                         , v.as_ptr()  // the value to bind
                         , l as c_int  // the number of bytes
-                        , -1 as *mut c_void// SQLITE_TRANSIENT => SQLite makes a copy
+                        , -1isize as *mut c_void// SQLITE_TRANSIENT => SQLite makes a copy
                         )
                 }
             }
@@ -306,7 +305,7 @@ impl<'db> Cursor<'db> {
                         , i as c_int  // the SQL parameter index (starting from 1)
                         , v.as_ptr()  // the value to bind
                         , l as c_int  // the number of bytes
-                        , -1 as *mut c_void // SQLITE_TRANSIENT => SQLite makes a copy
+                        , -1isize as *mut c_void // SQLITE_TRANSIENT => SQLite makes a copy
                         )
                 }
             }
