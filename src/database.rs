@@ -35,7 +35,6 @@ use libc::c_int;
 use std::str;
 use std::ptr;
 use std::fmt;
-use std::marker;
 use std::borrow::ToOwned;
 use std::ffi::{CString, CStr};
 use types::*;
@@ -49,14 +48,12 @@ use types::ResultCode::*;
 /// but cannot be shared through `std::sync::RWLock`.
 pub struct Database {
     dbh: *mut dbh,
-    _nocopy: marker::NoCopy,
 }
 
 unsafe impl Send for Database {}
-impl !marker::Sync for Database {}
 
 pub fn database_with_handle(dbh: *mut dbh) -> Database {
-    Database { dbh: dbh, _nocopy: marker::NoCopy }
+    Database { dbh: dbh }
 }
 
 impl fmt::Debug for Database {

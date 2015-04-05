@@ -2,8 +2,6 @@
 #![crate_type = "lib"]
 
 #![allow(missing_copy_implementations)]
-#![feature(optin_builtin_traits)]
-#![feature(core, libc)]
 
 #[macro_use] extern crate log;
 
