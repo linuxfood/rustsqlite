@@ -7,4 +7,5 @@ authors = [ "" ]
 name = "sqlite3"
 
 [dependencies]
+libc = "0.1.5"
 log = "0.3.1"
